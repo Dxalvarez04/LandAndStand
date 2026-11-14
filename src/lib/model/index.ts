@@ -9,7 +9,7 @@
  * - Capa 6: Incertidumbre y agregación (Monte Carlo de 300 sorteos)
  */
 import type { Estado, Resultado } from "@/lib/contract";
-import { N } from "@/lib/constants";
+import { ELEVACION_PROVISIONAL } from "@/lib/mock/elevacionFalsa";
 import { agregar, generarSorteos, type Datos } from "./montecarlo";
 import type { Parametros } from "./tipos";
 
@@ -27,10 +27,11 @@ async function cargarDatos(): Promise<Datos> {
       const buf = await resp.arrayBuffer();
       dem = new Float32Array(buf);
     } else {
-      dem = new Float32Array(N * N);
+      // DEM provisional mientras no esté disponible dem_real.bin.
+      dem = ELEVACION_PROVISIONAL;
     }
   } catch {
-    dem = new Float32Array(N * N);
+    dem = ELEVACION_PROVISIONAL;
   }
 
   let sorteos: Parametros[];
@@ -54,6 +55,7 @@ export async function calcular(
   onProgreso: (fraccion: number) => void,
 ): Promise<Resultado> {
   const datos = await cargarDatos();
-  return agregar(estado, datos, onProgreso);
+  const resultado = agregar(estado, datos, onProgreso);
+  return { ...resultado, elevacion: datos.dem };
 }
 

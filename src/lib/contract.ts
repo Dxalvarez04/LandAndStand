@@ -10,7 +10,7 @@
 export type Modo = "tripulante" | "pareja" | "grupo";
 
 /** "U" = U(0,30; 0,40) (por defecto). El resto son escenarios fijos. */
-export type FWalk = "U" | 0.3 | 0.35 | 0.4 | 0.47 | 0.5;
+export type FWalk = "U" | 0.3 | 0.35 | 0.4 | 0.45 | 0.5;
 
 export type EnergiaHoras = 6 | 4;
 
@@ -25,7 +25,7 @@ export interface Estado {
   /** 1..30 */
   sol: number;
   modo: Modo;
-  /** 1 en modo tripulante, 2 en modo pareja, 3 o más en modo grupo */
+  /** 1 en modo tripulante, 2 en modo pareja y 3 o más en modo grupo (sin límite) */
   tripulantes: Tripulante[];
   fwalk: FWalk;
   energiaHoras: EnergiaHoras;
@@ -36,6 +36,8 @@ export type IdDestino = "T1" | "T2" | "T3" | "T4" | "T5" | "T6";
 export interface Resultado {
   /** 110 × 110, índice = fila * 110 + columna. Fila 0 = SUR, columna 0 = oeste. */
   prob: Float32Array;
+  /** 110 × 110 elevaciones del DEM en metros. Fila 0 = SUR. Opcional hasta que el modelo real la aporte. */
+  elevacion?: Float32Array;
   destinos: { id: IdDestino; p: number }[];
 }
 

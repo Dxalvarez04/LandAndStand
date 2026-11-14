@@ -42,7 +42,7 @@ export function generarSorteos(n: number = 300, semilla: number = 11): Parametro
   // Normal estándar vía Box-Muller
   const gaussian = (media: number, std: number, minVal: number, maxVal: number) => {
     let u1 = rand();
-    let u2 = rand();
+    const u2 = rand();
     while (u1 === 0) u1 = rand();
     const z0 = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
     const val = media + z0 * std;

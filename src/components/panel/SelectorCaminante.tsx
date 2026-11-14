@@ -1,12 +1,8 @@
 "use client";
 
-/**
- * PERSONA 3 · Quién camina: tripulante, pareja o grupo.
- * Los valores de VO₂ y masa no son editables porque en Marte no se pueden medir in situ;
- * provienen de las estimaciones y perfiles modelados antes del aterrizaje.
- */
+import { useState } from "react";
 import type { Modo, Tripulante } from "@/lib/contract";
-import { PERFILES_ASTRONAUTAS, buscarPerfil } from "@/lib/data/perfiles";
+import { PERFILES_ASTRONAUTAS, type PerfilAstronauta } from "@/lib/data/perfiles";
 
 interface Props {
   modo: Modo;
@@ -15,146 +11,145 @@ interface Props {
   onTripulantes: (t: Tripulante[]) => void;
 }
 
-const MODOS: { valor: Modo; etiqueta: string }[] = [
-  { valor: "tripulante", etiqueta: "Tripulante" },
-  { valor: "pareja", etiqueta: "Pareja" },
-  { valor: "grupo", etiqueta: "Grupo" },
-];
+function idsDesdeTripulantes(tripulantes: Tripulante[]): string[] {
+  const ids = tripulantes
+    .map(
+      (t) =>
+        PERFILES_ASTRONAUTAS.find(
+          (p) => Math.abs(p.vo2pre - t.vo2pre) < 0.05 && p.masa === t.masa,
+        )?.id,
+    )
+    .filter((id): id is string => Boolean(id));
 
-export default function SelectorCaminante({ modo, tripulantes, onModo, onTripulantes }: Props) {
-  const visibles =
-    modo === "tripulante"
-      ? tripulantes.slice(0, 1)
-      : modo === "pareja"
-        ? tripulantes.slice(0, 2)
-        : tripulantes;
-
-  const seleccionarPerfil = (i: number, perfilId: string) => {
-    const p = buscarPerfil(perfilId);
-    if (!p) return;
-    onTripulantes(tripulantes.map((t, j) => (j === i ? { vo2pre: p.vo2pre, masa: p.masa } : t)));
-  };
-
-  const anadirAstronauta = () => {
-    // Escoger el primer perfil que aún no esté en el grupo, o el primero por defecto
-    const siguiente =
-      PERFILES_ASTRONAUTAS.find((p) => !tripulantes.some((t) => t.vo2pre === p.vo2pre && t.masa === p.masa)) ||
-      PERFILES_ASTRONAUTAS[2];
-    onTripulantes([...tripulantes, { vo2pre: siguiente.vo2pre, masa: siguiente.masa }]);
-  };
-
-  const quitarAstronauta = (idx: number) => {
-    if (tripulantes.length <= 2) return;
-    onTripulantes(tripulantes.filter((_, j) => j !== idx));
-  };
-
-  return (
-    <fieldset className="flex flex-col gap-2 text-sm">
-      <div className="flex items-center justify-between mb-1">
-        <legend className="font-semibold text-stone-200">Quién camina</legend>
-        <span className="text-[11px] text-stone-400 italic">Perfiles previstos al aterrizaje</span>
-      </div>
-
-      {/* Selector de modo */}
-      <div className="flex gap-2">
-        {MODOS.map((m) => (
-          <button
-            key={m.valor}
-            type="button"
-            onClick={() => {
-              if (m.valor === "grupo" && tripulantes.length < 3) {
-                onTripulantes([
-                  tripulantes[0] ?? { vo2pre: PERFILES_ASTRONAUTAS[0].vo2pre, masa: PERFILES_ASTRONAUTAS[0].masa },
-                  tripulantes[1] ?? { vo2pre: PERFILES_ASTRONAUTAS[1].vo2pre, masa: PERFILES_ASTRONAUTAS[1].masa },
-                  { vo2pre: PERFILES_ASTRONAUTAS[3].vo2pre, masa: PERFILES_ASTRONAUTAS[3].masa },
-                ]);
-              }
-              onModo(m.valor);
-            }}
-            className={`rounded px-3 py-1 font-medium transition-colors ${
-              modo === m.valor ? "bg-amber-600 text-white" : "bg-stone-700 hover:bg-stone-600 text-stone-200"
-            }`}
-          >
-            {m.etiqueta}
-          </button>
-        ))}
-      </div>
-
-      {/* Lista de astronautas activos */}
-      <div className="flex flex-col gap-2.5 mt-1">
-        {visibles.map((t, i) => {
-          const perfilCoincidente =
-            PERFILES_ASTRONAUTAS.find((p) => Math.abs(p.vo2pre - t.vo2pre) < 0.05 && p.masa === t.masa) ||
-            PERFILES_ASTRONAUTAS[0];
-
-          return (
-            <div key={i} className="flex flex-col gap-2 rounded bg-stone-900/90 p-2.5 border border-stone-800 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-500 font-mono tracking-wide">
-                  Astronauta {i + 1}
-                </span>
-                {modo === "grupo" && tripulantes.length > 2 && (
-                  <button
-                    type="button"
-                    onClick={() => quitarAstronauta(i)}
-                    className="text-xs text-red-400 hover:text-red-300 font-medium px-1"
-                    title="Eliminar de la expedición"
-                  >
-                    ✕ Quitar
-                  </button>
-                )}
-              </div>
-
-              {/* Selector de perfil */}
-              <select
-                className="w-full text-xs rounded bg-stone-800 border border-stone-700 p-1.5 text-stone-200 font-medium focus:outline-none focus:border-amber-500"
-                value={perfilCoincidente.id}
-                onChange={(e) => seleccionarPerfil(i, e.target.value)}
-              >
-                {PERFILES_ASTRONAUTAS.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.id} · {p.nombre} ({p.rol})
-                  </option>
-                ))}
-              </select>
-
-              <p className="text-[11px] text-stone-400 leading-snug">
-                {perfilCoincidente.descripcion}
-              </p>
-
-              {/* Indicadores fijos no editables */}
-              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-stone-800/80">
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-stone-800/70 border border-stone-700/50 text-xs">
-                  <span className="text-stone-400 text-[11px]">VO₂pre:</span>
-                  <span className="font-mono font-bold text-amber-400">{perfilCoincidente.vo2pre.toFixed(1)}</span>
-                  <span className="text-[10px] text-stone-400">mL/kg/min</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-stone-800/70 border border-stone-700/50 text-xs">
-                  <span className="text-stone-400 text-[11px]">Masa estimada:</span>
-                  <span className="font-mono font-bold text-stone-200">{perfilCoincidente.masa}</span>
-                  <span className="text-[10px] text-stone-400">kg</span>
-                </div>
-                <div className="px-2 py-0.5 rounded bg-stone-800/40 text-[11px] text-stone-400 ml-auto">
-                  {perfilCoincidente.arquetipo}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {modo === "grupo" && (
-        <button
-          type="button"
-          onClick={anadirAstronauta}
-          className="mt-1 self-start rounded bg-stone-800 hover:bg-stone-700 border border-stone-700 px-3 py-1.5 text-xs text-amber-400 font-medium transition-colors"
-        >
-          + Añadir astronauta al grupo
-        </button>
-      )}
-    </fieldset>
-  );
+  return ids.length > 0
+    ? Array.from(new Set(ids))
+    : [PERFILES_ASTRONAUTAS[1].id, PERFILES_ASTRONAUTAS[0].id];
 }
 
+/**
+ * PERSONA 3 · Selector de tripulantes de la expedición.
+ * Usa los 8 perfiles previstos al aterrizaje y permite marcar cualquier número
+ * de personas, sin límite. El modo se deduce automáticamente: 1 tripulante,
+ * 2 en pareja y 3 o más en grupo.
+ */
+export default function SelectorCaminante({ modo, tripulantes, onModo, onTripulantes }: Props) {
+  const [desplegado, setDesplegado] = useState(false);
+  const [seleccionados, setSeleccionados] = useState<string[]>(() =>
+    idsDesdeTripulantes(tripulantes),
+  );
 
+  const etiquetaModo = modo === "tripulante" ? "Tripulante" : modo === "pareja" ? "Pareja" : "Grupo";
 
+  const toggleTripulante = (id: string) => {
+    let nuevos: string[];
+    if (seleccionados.includes(id)) {
+      // Mantener al menos una persona en la salida
+      if (seleccionados.length === 1) return;
+      nuevos = seleccionados.filter((item) => item !== id);
+    } else {
+      // Sin límite: se añade a la expedición
+      nuevos = [...seleccionados, id];
+    }
+
+    setSeleccionados(nuevos);
+
+    const tripulantesData: Tripulante[] = nuevos.map((idAstro) => {
+      const p =
+        PERFILES_ASTRONAUTAS.find((perfil) => perfil.id === idAstro) ??
+        PERFILES_ASTRONAUTAS[0];
+      return { vo2pre: p.vo2pre, masa: p.masa };
+    });
+
+    const nuevoModo: Modo =
+      nuevos.length === 1 ? "tripulante" : nuevos.length === 2 ? "pareja" : "grupo";
+    onModo(nuevoModo);
+    onTripulantes(tripulantesData);
+  };
+
+  const nombresSeleccionados = seleccionados
+    .map((id) => PERFILES_ASTRONAUTAS.find((p) => p.id === id)?.nombre)
+    .filter(Boolean)
+    .join(", ");
+
+  return (
+    <div className="relative rounded-xl border border-stone-800 bg-stone-900/80 p-3 shadow-sm backdrop-blur">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-xs font-semibold tracking-wider text-stone-400 uppercase">
+          Quién camina
+        </span>
+        <span className="rounded-full border border-stone-700 bg-stone-800 px-2 py-0.5 text-[11px] font-mono text-amber-400">
+          {seleccionados.length} · {etiquetaModo}
+        </span>
+      </div>
+
+      {/* Botón activador del desplegable */}
+      <button
+        type="button"
+        onClick={() => setDesplegado((v) => !v)}
+        aria-expanded={desplegado}
+        aria-controls="lista-tripulantes"
+        className="flex w-full items-center justify-between rounded-lg border border-stone-700 bg-stone-950 px-3 py-2 text-left text-xs transition hover:border-stone-600 focus:outline-none"
+      >
+        <span className="line-clamp-2 pr-2 text-left text-xs font-medium leading-snug text-white">
+          {nombresSeleccionados || "Seleccionar tripulantes..."}
+        </span>
+        <span className="shrink-0 font-mono text-[10px] text-stone-400">
+          {desplegado ? "▲" : "▼"}
+        </span>
+      </button>
+
+      {/* Menú desplegable con checklist */}
+      {desplegado && (
+        <div
+          id="lista-tripulantes"
+          className="mt-2 max-h-80 space-y-1 overflow-y-auto rounded-lg border border-stone-700 bg-stone-950 p-2 shadow-xl"
+        >
+          <div className="px-1 pb-1 text-[10px] text-stone-400">
+            Marca a quienes saldrán (sin límite):
+          </div>
+          {PERFILES_ASTRONAUTAS.map((p: PerfilAstronauta) => {
+            const marcado = seleccionados.includes(p.id);
+            return (
+              <label
+                key={p.id}
+                className={`flex cursor-pointer items-start gap-2.5 rounded-md border p-2 text-xs transition ${
+                  marcado
+                    ? "border-amber-500/40 bg-amber-500/15 text-white"
+                    : "border-transparent text-stone-300 hover:bg-stone-900"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={marcado}
+                  onChange={() => toggleTripulante(p.id)}
+                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-stone-700 bg-stone-900 accent-amber-500"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="shrink-0 font-mono text-[9px] font-bold text-amber-500">
+                      {p.id}
+                    </span>
+                    <p className="truncate font-semibold leading-tight text-stone-100">
+                      {p.nombre}
+                    </p>
+                  </div>
+                  <p className="truncate text-[10px] leading-tight text-stone-400">
+                    {p.rol} · {p.arquetipo}
+                  </p>
+                  <p className="font-mono text-[9px] leading-tight text-stone-500">
+                    VO₂ {p.vo2pre.toFixed(1)} · {p.masa} kg
+                  </p>
+                  {marcado && (
+                    <p className="mt-0.5 line-clamp-2 text-[9px] leading-snug text-stone-400">
+                      {p.descripcion}
+                    </p>
+                  )}
+                </div>
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

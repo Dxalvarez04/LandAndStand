@@ -1,6 +1,7 @@
 import type { Estado, Resultado } from "@/lib/contract";
 import { N } from "@/lib/constants";
 import { DESTINOS, HABITAT, kmACelda } from "@/lib/data/targets";
+import { ELEVACION_PROVISIONAL } from "@/lib/mock/elevacionFalsa";
 
 /**
  * Resultado INVENTADO para que el mapa y el panel avancen sin esperar al cálculo.
@@ -27,5 +28,5 @@ export function resultadoFalso(estado: Estado): Resultado {
     return { id: t.id, p: prob[fila * N + columna] };
   });
 
-  return { prob, destinos };
+  return { prob, elevacion: ELEVACION_PROVISIONAL, destinos };
 }

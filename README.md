@@ -58,7 +58,7 @@ Tres personas desarrollan la herramienta. Katrina Espinar es la autora del model
 
 ### Persona 1 · Cálculo (capa fisiológica sobre el terreno)
 
-- Capas 1–6 de la especificación: fisiología, marcha con traje, grafo de 8 vecinos, Dijkstra de ida y vuelta (la vuelta sobre el grafo inverso) y Monte Carlo para población, tripulante y pareja.
+- Capas 1–6 de la especificación: fisiología, marcha con traje, grafo de 8 vecinos, Dijkstra de ida y vuelta (la vuelta sobre el grafo inverso) y Monte Carlo para tripulante, pareja y grupo.
 - Corre en un Web Worker: recibe `estado` y devuelve `resultado` (ver más abajo).
 - **Terminado cuando** reproduce el protocolo de validación de la sección 10: llano el sol 1 ≈ 0,22 m/s y ≈ 1,7 km; Rock Hall = 0,290 el sol 1 con `draws_seed11_300.json`.
 - Si Katrina comparte el repo de Python, el trabajo se reduce a exportar las capas ya calculadas a JSON.
@@ -75,9 +75,9 @@ Tres personas desarrollan la herramienta. Katrina Espinar es la autora del model
 ### Persona 3 · Visual: el panel y los destinos
 
 - Deslizador de sol (1–30).
-- Selector de quién camina: tripulante, pareja o grupo (a partir de 8 perfiles precalculados previstos al aterrizaje).
-- Selectores de escenario: intensidad (por defecto entre el 30 y el 40 %, o fija en 30, 35, 40, 47 o 50 %) y energía del traje (6 h o 4 h).
-- Tabla de destinos con distancia, desnivel y probabilidad.
+- Selector de quién camina: tripulación seleccionable sin límite (una o más personas) a partir de los 8 perfiles precalculados previstos al aterrizaje.
+- Selector de escenario: intensidad (por defecto 35 %; opciones fijas de 30, 35, 40, 45 y 50 %). La energía del traje queda fija en 6 h en esta vista.
+- Tabla de destinos con distancia, desnivel y probabilidad; al pulsar un destino se despliega un resumen de sus tareas. Incluye el alta de destinos personalizados seleccionados sobre el mapa.
 - Tarjetas con la foto de Curiosity («esto es lo que verás»). Los destinos se «encienden» al pasar del 50 %.
 - Panel de supuestos siempre visible, créditos y barra de progreso mientras calcula.
 
@@ -90,14 +90,15 @@ Es lo único que hay que acordar antes de separarse, y no se cambia después sin
 estado = {
   sol,                                    // 1..30
   modo,                                   // "tripulante" | "pareja" | "grupo"
-  tripulantes: [{ vo2pre, masa }],        // 1 en tripulante, 2 en pareja, 3 o más en grupo
-  fwalk,                                  // "U" (U(0,30;0,40)) | 0.30 | 0.35 | 0.40 | 0.47 | 0.50
+  tripulantes: [{ vo2pre, masa }],        // 1 en tripulante, 2 en pareja, 3+ en grupo (sin límite)
+  fwalk,                                  // "U" (U(0,30;0,40)) | 0.30 | 0.35 | 0.40 | 0.45 | 0.50
   energiaHoras                            // 6 | 4
 }
 
 // La persona 1 lo devuelve; la persona 2 lo pinta en el mapa y la persona 3 en la tabla
 resultado = {
   prob: Float32Array(12100),              // 110 × 110, fila 0 = SUR, columna 0 = oeste
+  elevacion: Float32Array(12100),         // opcional: DEM en metros, fila 0 = SUR
   destinos: [{ id: "T3", p: 0.29 }, ...]
 }
 ```
@@ -131,6 +132,7 @@ Mientras el cálculo no esté listo, las dos personas de lo visual trabajan con 
 ## Pendiente
 
 - [ ] **Pedir a Katrina** la carpeta `data/` (`dem_real.npy`, `aoi_color.jpg`, posteriores), `docs/targets/targets.json`, `results/draws_seed11_300.json` y `results/real_prob_con.npy`. Pedir también el repo de Python (`src/landstand/`), si lo tiene. Sin `data/` no se puede empezar el cálculo real.
+- [ ] Sustituir la elevación provisional del mock (`src/lib/mock/elevacionFalsa.ts`) por el DEM real cuando esté disponible.
 - [ ] Decidir entre calcular en el navegador (lo que pide la especificación) o precalcular en Python.
 - [ ] Comprobar en el enunciado si DEM, HiRISE y posiciones y fotos de Curiosity cuentan como los tres tipos de datos mínimos.
 - [ ] Elegir el stack de la web.

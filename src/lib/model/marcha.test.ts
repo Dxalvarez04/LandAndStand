@@ -2,7 +2,7 @@
  * Test suite para la Capa 3: Marcha con traje (modelo M2).
  * Valida ratio, tobler, marcha y radioLlano según el protocolo de validación y el informe técnico.
  */
-import { ratio, tobler, marcha, radioLlano } from "./marcha";
+import { ratio, marcha, radioLlano } from "./marcha";
 import { CENTRALES } from "../constants";
 
 export function ejecutarTestsMarcha() {

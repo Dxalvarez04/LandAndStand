@@ -43,7 +43,7 @@ class IndexedMinHeap {
   public insertOrDecreaseKey(node: number, key: number): void {
     const p = this.pos[node];
     if (p === -1) {
-      let i = this.size++;
+      const i = this.size++;
       this.nodes[i] = node;
       this.keys[i] = key;
       this.pos[node] = i;
@@ -92,7 +92,7 @@ class IndexedMinHeap {
     const key = this.keys[i];
     const half = this.size >> 1;
     while (i < half) {
-      let left = (i << 1) + 1;
+      const left = (i << 1) + 1;
       const right = left + 1;
       let best = left;
       if (right < this.size && this.keys[right] < this.keys[left]) {

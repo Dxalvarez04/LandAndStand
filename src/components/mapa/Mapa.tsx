@@ -13,16 +13,25 @@ import { useEffect, useRef } from "react";
 import { interpolateViridis } from "d3-scale-chromatic";
 import type { IdDestino, Resultado } from "@/lib/contract";
 import { N, PROB_MIN_VISIBLE } from "@/lib/constants";
-import { DESTINOS, HABITAT, kmACelda } from "@/lib/data/targets";
+import { DESTINOS, HABITAT, kmACelda, type DestinoPersonalizado } from "@/lib/data/targets";
 
 interface Props {
   resultado: Resultado | null;
+  destinosPersonalizados?: DestinoPersonalizado[];
+  puntoSeleccionado?: { fila: number; columna: number } | null;
+  seleccionandoDestino?: boolean;
   onCeldaClick?: (fila: number, columna: number) => void;
 }
 
 const pct = (p: number) => `${Math.round(p * 100)} %`;
 
-export default function Mapa({ resultado, onCeldaClick }: Props) {
+export default function Mapa({
+  resultado,
+  destinosPersonalizados = [],
+  puntoSeleccionado = null,
+  seleccionandoDestino = false,
+  onCeldaClick,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -49,23 +58,40 @@ export default function Mapa({ resultado, onCeldaClick }: Props) {
 
   const pDe = (id: IdDestino) => resultado?.destinos.find((d) => d.id === id)?.p;
 
+  const posicionCelda = (fila: number, columna: number) => ({
+    left: `${((columna + 0.5) / N) * 100}%`,
+    top: `${((N - 1 - fila + 0.5) / N) * 100}%`,
+  });
+
   const marcador = (northKm: number, eastKm: number) => {
     const { fila, columna } = kmACelda(northKm, eastKm);
-    return { left: `${((columna + 0.5) / N) * 100}%`, top: `${((N - 1 - fila + 0.5) / N) * 100}%` };
+    return posicionCelda(fila, columna);
   };
 
   return (
-    <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-stone-800">
+    <div
+      className={`relative aspect-square w-full overflow-hidden rounded-lg bg-stone-800 ${
+        seleccionandoDestino ? "ring-2 ring-amber-500/80 ring-offset-2 ring-offset-stone-950" : ""
+      }`}
+    >
       {/* TODO: <img src="/data/aoi_color.jpg"> de fondo, norte arriba */}
       <canvas
         ref={canvasRef}
         width={N}
         height={N}
-        className="absolute inset-0 h-full w-full [image-rendering:pixelated]"
+        className={`absolute inset-0 h-full w-full [image-rendering:pixelated] ${
+          seleccionandoDestino ? "cursor-crosshair" : ""
+        }`}
         onClick={(e) => {
           const r = e.currentTarget.getBoundingClientRect();
-          const columna = Math.floor(((e.clientX - r.left) / r.width) * N);
-          const y = Math.floor(((e.clientY - r.top) / r.height) * N);
+          const columna = Math.min(
+            N - 1,
+            Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * N)),
+          );
+          const y = Math.min(
+            N - 1,
+            Math.max(0, Math.floor(((e.clientY - r.top) / r.height) * N)),
+          );
           onCeldaClick?.(N - 1 - y, columna);
         }}
       />
@@ -88,6 +114,36 @@ export default function Mapa({ resultado, onCeldaClick }: Props) {
           </span>
         );
       })}
+
+      {destinosPersonalizados.map((d) => {
+        const p = resultado?.prob[d.fila * N + d.columna];
+        return (
+          <span
+            key={d.id}
+            title={d.nombre}
+            className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded border border-amber-500/70 bg-stone-950/90 px-1.5 text-xs font-semibold text-amber-300"
+            style={posicionCelda(d.fila, d.columna)}
+          >
+            {d.id}
+            {p !== undefined && ` · ${pct(p)}`}
+          </span>
+        );
+      })}
+
+      {puntoSeleccionado && (
+        <span
+          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded border border-white bg-amber-400 px-1.5 text-xs font-bold text-stone-950 shadow-lg"
+          style={posicionCelda(puntoSeleccionado.fila, puntoSeleccionado.columna)}
+        >
+          Nuevo
+        </span>
+      )}
+
+      {seleccionandoDestino && (
+        <div className="pointer-events-none absolute inset-x-2 top-2 z-20 rounded-lg border border-amber-400/60 bg-stone-950/90 px-3 py-2 text-center text-xs font-semibold text-amber-300 shadow-lg">
+          Haz clic en el mapa para elegir el nuevo destino
+        </div>
+      )}
     </div>
   );
 }
