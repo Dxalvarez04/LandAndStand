@@ -3,9 +3,9 @@
  * La geometría (dist, S, G, theta, ratio) se precalcula UNA vez a partir del DEM.
  * Por sorteo solo cambian V, P, t, e.
  */
-import { CELDA_M, N } from "@/lib/constants";
-import { thetaMax } from "./fisiologia";
-import { marcha, ratio as calcularRatio } from "./marcha";
+import { CELDA_M, KJ_PER_L, N } from "@/lib/constants";
+import { thetaMax, vo2max } from "./fisiologia";
+import { ratio as calcularRatio } from "./marcha";
 import type { Parametros } from "./tipos";
 
 export interface Geometria {
@@ -188,21 +188,38 @@ export function evaluarAristas(
 
   const thMax = thetaMax(s, p);
 
+  // Lo que solo depende de la pendiente (fija) va precalculado; lo que solo depende del sorteo y
+  // del sol, fuera del bucle. Mismas operaciones y en el mismo orden que marcha(): resultado idéntico.
+  const { ratio: RATIO, tobler: TOBLER } = porPendiente(geo);
+  const G = geo.G;
+  const TH = geo.theta;
+  const DIST = geo.dist;
+  const cap = p.fWalk * vo2max(s, p);
+  const deltaCoste = p.ref2 - p.rest2;
+  const numMet = p.vRef * (cap - p.rest2);
+  const vMet0 = Math.max(0, numMet / (deltaCoste * 1.0));
+  const vLlano = Math.min(p.vFlat, vMet0); // tobler(0, vFlat) = vFlat
+  const { vFlat, rest2, vRef, masa } = p;
+
   for (let k = 0; k < m; k++) {
-    const gVal = geo.G[k];
-    const thVal = geo.theta[k];
+    const gVal = G[k];
 
     // Criterios geométricos de exclusión:
     // 1. Dominio de validez Minetti (|G| <= 45%)
     // 2. Límite de equilibrio del astronauta (theta <= theta_max(s))
-    if (Math.abs(gVal) > 45 || thVal > thMax) {
+    if (Math.abs(gVal) > 45 || TH[k] > thMax) {
       energia[k] = Infinity;
       tiempo[k] = Infinity;
       factible[k] = 0;
       continue;
     }
 
-    const { V, P } = marcha(gVal, s, p);
+    // marcha(gVal, s, p), en línea
+    const rG = RATIO[k];
+    const denom = deltaCoste * rG;
+    const vMet = denom > 0 ? Math.max(0, numMet / denom) : 0;
+    let V = Math.min(vFlat * TOBLER[k], vMet);
+    if (gVal < 0 && vLlano < V) V = vLlano; // tope de bajada
 
     // 3. Velocidad mínima viable (V > 0.02 m/s)
     if (V <= 0.02) {
@@ -212,15 +229,40 @@ export function evaluarAristas(
       continue;
     }
 
-    const d = geo.dist[k];
-    const t = d / V;
-    const e = P * t;
-
-    energia[k] = e;
+    const P = ((rest2 + deltaCoste * (V / vRef) * rG) * masa * KJ_PER_L) / 60;
+    const t = DIST[k] / V;
+    energia[k] = P * t;
     tiempo[k] = t;
     factible[k] = 1;
   }
 
   return { energia, tiempo, factible };
+}
+
+/** Términos de marcha que solo dependen de la pendiente de cada arista (en doble precisión). */
+interface PorPendiente {
+  /** ratio(G) de Minetti */
+  ratio: Float64Array;
+  /** Factor de Tobler: tobler(G/100, vFlat) = vFlat · factor */
+  tobler: Float64Array;
+}
+
+const cachePendiente = new WeakMap<Geometria, PorPendiente>();
+
+function porPendiente(geo: Geometria): PorPendiente {
+  const hit = cachePendiente.get(geo);
+  if (hit) return hit;
+  const m = geo.G.length;
+  const r = new Float64Array(m);
+  const t = new Float64Array(m);
+  for (let k = 0; k < m; k++) {
+    const g = geo.G[k];
+    r[k] = calcularRatio(g);
+    // tobler(S, vFlat) = min(vFlat, vFlat·exp(x)) = vFlat · min(1, exp(x)), exactamente
+    t[k] = Math.min(1, Math.exp(-3.5 * (Math.abs(g / 100 + 0.05) - 0.05)));
+  }
+  const res = { ratio: r, tobler: t };
+  cachePendiente.set(geo, res);
+  return res;
 }
 

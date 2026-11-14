@@ -3,6 +3,7 @@
  * Valida los modos Tripulante, Pareja y Grupo (más de dos astronautas caminando juntos),
  * y cumplimiento del contrato Resultado ({ prob, destinos }).
  */
+import { expect, test } from "vitest";
 import type { Estado } from "@/lib/contract";
 import { N } from "../constants";
 import { HABITAT, kmACelda } from "../data/targets";
@@ -128,3 +129,9 @@ export function ejecutarTestsMonteCarlo() {
 
   return resultados;
 }
+
+// Ejecución con vitest (npm test): cada comprobación de la lista es un caso
+
+test.each(ejecutarTestsMonteCarlo())("$test", ({ ok, detalle }) => {
+  expect(ok, detalle).toBe(true);
+});

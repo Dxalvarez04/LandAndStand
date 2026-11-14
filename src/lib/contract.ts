@@ -41,11 +41,35 @@ export interface Resultado {
   destinos: { id: IdDestino; p: number }[];
 }
 
+// ---- Ruta ilustrativa del inspector (EXTENSIÓN OPCIONAL, añadida por la persona 2) ----
+// Con los parámetros centrales (sección 5): ida = cadena de pred_o desde H hasta la celda,
+// vuelta = cadena de pred_b desde la celda hasta H. Índices fila * 110 + columna.
+// Ruta vacía (ida.length === 0) = no hay camino dentro del presupuesto de energía.
+// `null` = el modelo no calcula rutas (el mapa dibuja entonces una ruta aproximada).
+
+export interface Ruta {
+  ida: Int32Array;
+  vuelta: Int32Array;
+}
+
 // ---- Mensajes del Web Worker ----
 
-export type MensajeAlWorker = { tipo: "calcular"; id: number; estado: Estado };
+// Un cálculo nuevo (calcular o contar) deja obsoleto al anterior: el worker lo abandona en cuanto
+// puede y no responde por él. Así, al arrastrar un deslizador solo se calcula el último valor.
+// «contar» reparte el Monte Carlo entre varios workers: cada uno suma su tramo de sorteos
+// (parte de partes) y la página junta los conteos.
+
+export type MensajeAlWorker =
+  | { tipo: "calcular"; id: number; estado: Estado }
+  | { tipo: "contar"; id: number; estado: Estado; parte: number; partes: number }
+  | { tipo: "ruta"; id: number; estado: Estado; celda: number };
 
 export type MensajeDelWorker =
+  | { tipo: "ruta"; id: number; ruta: Ruta | null }
   | { tipo: "progreso"; id: number; fraccion: number }
   | { tipo: "resultado"; id: number; resultado: Resultado }
+  /** Sorteos ya sumados por esta parte (de `total` sorteos en todo el cálculo) */
+  | { tipo: "avance"; id: number; hechos: number; total: number }
+  /** Celdas alcanzables contadas en el tramo de esta parte; la parte 0 envía además el DEM */
+  | { tipo: "conteo"; id: number; conteo: Int32Array; total: number; elevacion?: Float32Array }
   | { tipo: "error"; id: number; mensaje: string };

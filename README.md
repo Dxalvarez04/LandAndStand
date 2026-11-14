@@ -24,7 +24,7 @@ src/
 ├── lib/
 │   ├── contract.ts           # ⚠️ EL CONTRATO (Estado, Resultado y mensajes del worker)
 │   ├── constants.ts          # Constantes de la especificación y valores centrales
-│   ├── data/targets.ts       # Hábitat, T1–T6, km→celda (truncando) y celda→lat/lon
+│   ├── data/targets.ts       # Hábitat, referencias T1–T6, destinos de la misión M1–M6, km→celda (truncando) y celda→lat/lon
 │   ├── mock/resultadoFalso.ts# Resultado inventado mientras no hay cálculo real
 │   └── model/                # PERSONA 1 · capas 2–6
 │       ├── fisiologia.ts     #   capa 2
@@ -33,14 +33,14 @@ src/
 │       ├── alcanzabilidad.ts #   capa 5 (Dijkstra ida + vuelta inverso)
 │       ├── montecarlo.ts     #   capa 6
 │       └── index.ts          #   calcular(): hoy devuelve el mock (MODELO_REAL = false)
-├── workers/modelo.worker.ts  # Web Worker: recibe Estado y devuelve Resultado
-├── hooks/useModelo.ts        # Conecta la UI con el worker (resultado, progreso)
+├── workers/modelo.worker.ts  # Web Worker: suma su tramo de sorteos (varios en paralelo) y calcula rutas
+├── hooks/useModelo.ts        # Reparte el cálculo entre los workers y junta el resultado (resultado, progreso)
 └── components/
     ├── mapa/                 # PERSONA 2 · Mapa.tsx, Inspector.tsx
     └── panel/                # PERSONA 3 · sol, caminante, escenario, tabla, tarjetas, supuestos, créditos
 public/
 ├── data/                     # DEM, HiRISE, targets, posteriores y sorteos (pendiente de Katrina)
-└── fotos/                    # Fotos de Curiosity por destino
+└── fotos/                    # Fotos de Curiosity de cada punto de referencia
 ```
 
 ## Documentos
@@ -59,7 +59,7 @@ Tres personas desarrollan la herramienta. Katrina Espinar es la autora del model
 ### Persona 1 · Cálculo (capa fisiológica sobre el terreno)
 
 - Capas 1–6 de la especificación: fisiología, marcha con traje, grafo de 8 vecinos, Dijkstra de ida y vuelta (la vuelta sobre el grafo inverso) y Monte Carlo para tripulante, pareja y grupo.
-- Corre en un Web Worker: recibe `estado` y devuelve `resultado` (ver más abajo).
+- Corre en Web Workers: los 300 sorteos se reparten entre varios (hasta 6, según los núcleos) y la página junta los conteos; el resultado es idéntico al de un solo worker. Un estado nuevo deja obsoleto el cálculo en curso, así que arrastrar un deslizador no acumula cálculos en cola (ver más abajo).
 - **Terminado cuando** reproduce el protocolo de validación de la sección 10: llano el sol 1 ≈ 0,22 m/s y ≈ 1,7 km; Rock Hall = 0,290 el sol 1 con `draws_seed11_300.json`.
 - Si Katrina comparte el repo de Python, el trabajo se reduce a exportar las capas ya calculadas a JSON.
 
@@ -67,7 +67,7 @@ Tres personas desarrollan la herramienta. Katrina Espinar es la autora del model
 
 - Fondo HiRISE y capa de probabilidad en viridis, transparente por debajo del 2 %.
 - Contornos del 50 % y del 90 % (*marching squares*, por ejemplo con d3-contour).
-- Hábitat y destinos T1–T6 con su porcentaje.
+- Hábitat, destinos de la misión (M1–M6 y los que añade la tripulación) y puntos de referencia de Curiosity (T1–T6), con su porcentaje.
 - Inspector al hacer clic en una celda: coordenadas, probabilidad y ruta ilustrativa de ida y vuelta.
 - Animación al cambiar de sol.
 - ⚠️ El DEM tiene el **sur en la fila 0**, pero la imagen tiene el **norte arriba**: hay que invertir las filas al pintar.
@@ -77,7 +77,9 @@ Tres personas desarrollan la herramienta. Katrina Espinar es la autora del model
 - Deslizador de sol (1–30).
 - Selector de quién camina: tripulación seleccionable sin límite (una o más personas) a partir de los 8 perfiles precalculados previstos al aterrizaje.
 - Selector de escenario: intensidad (por defecto 35 %; opciones fijas de 30, 35, 40, 45 y 50 %). La energía del traje queda fija en 6 h en esta vista.
-- Tabla de destinos con distancia, desnivel y probabilidad; al pulsar un destino se despliega un resumen de sus tareas. Incluye el alta de destinos personalizados seleccionados sobre el mapa.
+- Tabla de **destinos de la misión** con distancia, desnivel y probabilidad; al pulsar uno se despliega un resumen de sus tareas y el mapa vuela hasta él. Empieza con seis destinos propuestos (M1–M6, elegidos sobre el DEM y la imagen HiRISE: unos se alcanzan el sol 1 y otros solo más adelante o nunca en 30 soles); se pueden quitar y añadir los propios sobre el mapa (P1, P2…), también desde la ficha de un punto o de un punto de referencia con «Añadir a los destinos de la misión».
+- Los sitios de Curiosity (T1–T6) no son destinos de la misión: en el mapa son **puntos de referencia** (anillo hueco), con su foto y su porcentaje.
+- El panel flota sobre el mapa y se esconde con la pestaña de su borde; entra cuando la cámara ya está en la zona de estudio.
 - Tarjetas con la foto de Curiosity («esto es lo que verás»). Los destinos se «encienden» al pasar del 50 %.
 - Panel de supuestos siempre visible, créditos y barra de progreso mientras calcula.
 
@@ -137,13 +139,26 @@ Mientras el cálculo no esté listo, las dos personas de lo visual trabajan con 
 - [ ] Comprobar en el enunciado si DEM, HiRISE y posiciones y fotos de Curiosity cuentan como los tres tipos de datos mínimos.
 - [ ] Elegir el stack de la web.
 - [x] Definir los tripulantes ficticios de la demo (8 perfiles en `src/lib/data/perfiles.ts`, no editables in situ por premisa predictiva).
-- [ ] Fotos de Curiosity de cada destino, con su número PIA.
+- [x] Fotos de Curiosity de cada destino, con su número PIA (`public/fotos/`, ver `docs/fuentes.md`).
 
 ## Hitos
 
 1. Contrato acordado. Mapa y panel funcionando con datos inventados. Paso 1 de validación superado.
 2. Cálculo real integrado en la interfaz y paso 2 de validación superado.
 3. Código congelado unas horas antes del cierre y vídeo grabado con la versión final.
+
+## Fuentes oficiales de datos
+
+Lista completa, con tamaños y detalles comprobados, en [`docs/fuentes.md`](docs/fuentes.md). Todo está en la misma proyección (equirectangular de Marte, meridiano central 0°, R = 3 396 190 m) que la ventana de estudio.
+
+| Dato | Enlace oficial | Uso |
+|---|---|---|
+| DEM de Gale, 1 m | [Ficha USGS](https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m) · [descarga, 3,6 GB](https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/MSL/MSL_Gale_DEM_Mosaic_1m_v3.tif) | Terreno del cálculo |
+| Mosaico HiRISE en color, 25 cm | [Ficha USGS](https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_orthophoto_mosaic_25cm) · [descarga, ~1 GB](https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/MSL/MSL_Gale_HiRISE-LRGB_78quads_sharp_cog.tif) | Fondo del mapa |
+| Posiciones de Curiosity | [MSL_waypoints.json (MMGIS)](https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json) | Situar los destinos |
+| Fotos de los destinos | NASA Photojournal, una por destino ([PIA11241](https://photojournal.jpl.nasa.gov/catalog/PIA11241), …) | Vista previa y visor del mapa |
+
+Alternativas: [DTM HiRISE sueltos](https://www.uahirise.org/dtm/), [mosaico HRSC de Gale a 30 m](https://doi.org/10.5281/zenodo.5808354), [índice de DEM de Marte (UCLA)](https://github.com/GALE-Lab/Mars_DEMs).
 
 ## Créditos de datos (deben aparecer en la herramienta)
 

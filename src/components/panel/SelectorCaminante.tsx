@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Modo, Tripulante } from "@/lib/contract";
 import { PERFILES_ASTRONAUTAS, type PerfilAstronauta } from "@/lib/data/perfiles";
+import { BORDE, Chevron, CIFRA, num, Seccion, TEXTO } from "./comun";
 
 interface Props {
   modo: Modo;
@@ -26,10 +27,13 @@ function idsDesdeTripulantes(tripulantes: Tripulante[]): string[] {
     : [PERFILES_ASTRONAUTAS[1].id, PERFILES_ASTRONAUTAS[0].id];
 }
 
+/** Apellido para el resumen («Dra. Elena Vega» → «Vega»). */
+const apellido = (nombre: string) => nombre.split(" ").slice(-1)[0];
+
 /**
- * PERSONA 3 · Selector de tripulantes de la expedición.
+ * PERSONA 3 · Quién sale del hábitat.
  * Usa los 8 perfiles previstos al aterrizaje y permite marcar cualquier número
- * de personas, sin límite. El modo se deduce automáticamente: 1 tripulante,
+ * de personas, sin límite (al menos una). El modo se deduce solo: 1 tripulante,
  * 2 en pareja y 3 o más en grupo.
  */
 export default function SelectorCaminante({ modo, tripulantes, onModo, onTripulantes }: Props) {
@@ -47,7 +51,6 @@ export default function SelectorCaminante({ modo, tripulantes, onModo, onTripula
       if (seleccionados.length === 1) return;
       nuevos = seleccionados.filter((item) => item !== id);
     } else {
-      // Sin límite: se añade a la expedición
       nuevos = [...seleccionados, id];
     }
 
@@ -66,90 +69,99 @@ export default function SelectorCaminante({ modo, tripulantes, onModo, onTripula
     onTripulantes(tripulantesData);
   };
 
-  const nombresSeleccionados = seleccionados
-    .map((id) => PERFILES_ASTRONAUTAS.find((p) => p.id === id)?.nombre)
-    .filter(Boolean)
-    .join(", ");
+  const elegidos = seleccionados
+    .map((id) => PERFILES_ASTRONAUTAS.find((p) => p.id === id))
+    .filter((p): p is PerfilAstronauta => Boolean(p));
 
   return (
-    <div className="relative rounded-xl border border-stone-800 bg-stone-900/80 p-3 shadow-sm backdrop-blur">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-semibold tracking-wider text-stone-400 uppercase">
-          Quién camina
+    <Seccion
+      id="titulo-caminante"
+      titulo="Quién camina"
+      valor={
+        <span className={`text-[13px] ${TEXTO.secundario}`}>
+          {etiquetaModo} <span className={`${CIFRA} text-[#eaf0ff]`}>· {seleccionados.length}</span>
         </span>
-        <span className="rounded-full border border-stone-700 bg-stone-800 px-2 py-0.5 text-[11px] font-mono text-amber-400">
-          {seleccionados.length} · {etiquetaModo}
-        </span>
-      </div>
-
-      {/* Botón activador del desplegable */}
+      }
+    >
+      {/* Resumen: quién sale, con su identificador */}
       <button
         type="button"
         onClick={() => setDesplegado((v) => !v)}
         aria-expanded={desplegado}
         aria-controls="lista-tripulantes"
-        className="flex w-full items-center justify-between rounded-lg border border-stone-700 bg-stone-950 px-3 py-2 text-left text-xs transition hover:border-stone-600 focus:outline-none"
+        className={`flex min-h-11 w-full items-center gap-3 rounded-[3px] border ${BORDE} bg-[#060a17] px-3 py-2 text-left outline-none transition-colors hover:border-[#a0beff]/30 focus-visible:border-[#eaf0ff]/60`}
       >
-        <span className="line-clamp-2 pr-2 text-left text-xs font-medium leading-snug text-white">
-          {nombresSeleccionados || "Seleccionar tripulantes..."}
+        <span className="flex min-w-0 flex-1 flex-wrap gap-x-3 gap-y-0.5">
+          {elegidos.length ? (
+            elegidos.map((p) => (
+              <span key={p.id} className="whitespace-nowrap text-[13.5px] text-[#eaf0ff]">
+                <span className={`${CIFRA} mr-1 text-[11.5px] ${TEXTO.terciario}`}>{p.id}</span>
+                {apellido(p.nombre)}
+              </span>
+            ))
+          ) : (
+            <span className={`text-[13.5px] ${TEXTO.terciario}`}>Elegir tripulantes</span>
+          )}
         </span>
-        <span className="shrink-0 font-mono text-[10px] text-stone-400">
-          {desplegado ? "▲" : "▼"}
-        </span>
+        <span className={`shrink-0 text-[12px] ${TEXTO.terciario}`}>{desplegado ? "Cerrar" : "Cambiar"}</span>
+        <Chevron abierto={desplegado} />
       </button>
 
-      {/* Menú desplegable con checklist */}
+      {/* Los 8 perfiles previstos: se marca a quienes salen (sin límite) */}
       {desplegado && (
-        <div
-          id="lista-tripulantes"
-          className="mt-2 max-h-80 space-y-1 overflow-y-auto rounded-lg border border-stone-700 bg-stone-950 p-2 shadow-xl"
-        >
-          <div className="px-1 pb-1 text-[10px] text-stone-400">
-            Marca a quienes saldrán (sin límite):
-          </div>
+        <ul id="lista-tripulantes" className={`mt-2 divide-y divide-[#a0beff]/[0.1] rounded-[3px] border ${BORDE} bg-[#060a17]`}>
           {PERFILES_ASTRONAUTAS.map((p: PerfilAstronauta) => {
             const marcado = seleccionados.includes(p.id);
+            const ultimo = marcado && seleccionados.length === 1;
             return (
-              <label
-                key={p.id}
-                className={`flex cursor-pointer items-start gap-2.5 rounded-md border p-2 text-xs transition ${
-                  marcado
-                    ? "border-amber-500/40 bg-amber-500/15 text-white"
-                    : "border-transparent text-stone-300 hover:bg-stone-900"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={marcado}
-                  onChange={() => toggleTripulante(p.id)}
-                  className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-stone-700 bg-stone-900 accent-amber-500"
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="shrink-0 font-mono text-[9px] font-bold text-amber-500">
-                      {p.id}
+              <li key={p.id}>
+                <label
+                  className={`flex cursor-pointer items-start gap-3 px-3 py-2.5 transition-colors hover:bg-white/[0.03] ${ultimo ? "cursor-not-allowed" : ""}`}
+                  title={ultimo ? "Tiene que salir al menos una persona" : undefined}
+                >
+                  <input
+                    type="checkbox"
+                    checked={marcado}
+                    onChange={() => toggleTripulante(p.id)}
+                    className="peer sr-only"
+                  />
+                  {/* Casilla propia (cuadrada, como el resto de la interfaz) */}
+                  <span
+                    aria-hidden
+                    className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[2px] border peer-focus-visible:ring-2 peer-focus-visible:ring-[#ff8fd8]/60 ${
+                      marcado ? "border-[#eaf0ff] bg-[#eaf0ff]" : "border-[#a0beff]/45"
+                    }`}
+                  >
+                    {marcado && (
+                      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden>
+                        <path d="M1.8 5.2 4 7.3 8.2 2.7" fill="none" stroke="#060a17" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline justify-between gap-2">
+                      <span className="min-w-0 truncate text-[13.5px] text-[#eaf0ff]">
+                        <span className={`${CIFRA} mr-1.5 text-[11.5px] ${TEXTO.terciario}`}>{p.id}</span>
+                        {p.nombre}
+                      </span>
+                      <span className={`${CIFRA} shrink-0 text-[11.5px] ${TEXTO.secundario}`}>
+                        {num(p.vo2pre)} · {p.masa} kg
+                      </span>
                     </span>
-                    <p className="truncate font-semibold leading-tight text-stone-100">
-                      {p.nombre}
-                    </p>
-                  </div>
-                  <p className="truncate text-[10px] leading-tight text-stone-400">
-                    {p.rol} · {p.arquetipo}
-                  </p>
-                  <p className="font-mono text-[9px] leading-tight text-stone-500">
-                    VO₂ {p.vo2pre.toFixed(1)} · {p.masa} kg
-                  </p>
-                  {marcado && (
-                    <p className="mt-0.5 line-clamp-2 text-[9px] leading-snug text-stone-400">
-                      {p.descripcion}
-                    </p>
-                  )}
-                </div>
-              </label>
+                    <span className={`block truncate text-[12px] ${TEXTO.terciario}`}>
+                      {p.rol} · {p.arquetipo}
+                    </span>
+                    {marcado && <span className={`mt-1 block text-[12px] leading-snug ${TEXTO.secundario}`}>{p.descripcion}</span>}
+                  </span>
+                </label>
+              </li>
             );
           })}
-        </div>
+          <li className={`px-3 py-2 text-[11.5px] ${TEXTO.terciario}`}>
+            VO₂ previo en mL/kg/min y masa. Perfiles fijos: en Marte no se pueden medir.
+          </li>
+        </ul>
       )}
-    </div>
+    </Seccion>
   );
 }

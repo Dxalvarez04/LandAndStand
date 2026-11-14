@@ -1,0 +1,12 @@
+{
+  "forma": [
+    110,
+    110
+  ],
+  "tipo": "float32",
+  "orden": "little-endian, fila 0 = sur, columna 0 = oeste",
+  "celda_m": 32.0,
+  "fuente": "USGS Astrogeology, MSL Gale Merged DEM 1 m v3 (Calef y Parker, 2016)",
+  "min_m": -4408.52,
+  "max_m": -3861.81
+}

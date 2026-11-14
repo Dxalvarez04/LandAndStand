@@ -2,6 +2,7 @@
  * Test suite para la Capa 3: Marcha con traje (modelo M2).
  * Valida ratio, tobler, marcha y radioLlano según el protocolo de validación y el informe técnico.
  */
+import { expect, test } from "vitest";
 import { ratio, marcha, radioLlano } from "./marcha";
 import { CENTRALES } from "../constants";
 
@@ -77,3 +78,9 @@ export function ejecutarTestsMarcha() {
 
   return resultados;
 }
+
+// Ejecución con vitest (npm test): cada comprobación de la lista es un caso
+
+test.each(ejecutarTestsMarcha())("$test", ({ ok, detalle }) => {
+  expect(ok, detalle).toBe(true);
+});

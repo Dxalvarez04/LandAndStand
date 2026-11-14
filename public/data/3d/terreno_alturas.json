@@ -1,0 +1,15 @@
+{
+  "ancho": 470,
+  "alto": 595,
+  "m_px": 16,
+  "tipo": "uint16 LE, decímetros sobre zmin, fila 0 = norte",
+  "caja_m": [
+    8140000.0,
+    -285000.0,
+    8147520.0,
+    -275480.0
+  ],
+  "zmin": -4479.0,
+  "zmax": -3172.379150390625,
+  "fuente": "USGS Astrogeology, MSL Gale Merged DEM 1 m v3 (Calef y Parker, 2016)"
+}

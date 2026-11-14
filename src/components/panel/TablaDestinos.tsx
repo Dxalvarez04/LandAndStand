@@ -1,77 +1,75 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Resultado } from "@/lib/contract";
 import { N } from "@/lib/constants";
-import {
-  DESTINOS,
-  distanciaDesdeHabitatKm,
-  desnivelDesdeHabitatM,
-  type DestinoPersonalizado,
-} from "@/lib/data/targets";
+import { distanciaDesdeHabitatKm, desnivelDesdeHabitatM, type DestinoMision } from "@/lib/data/targets";
+import { AMBAR, BORDE, Chevron, CIFRA, MarcaDestino, num, Seccion, TEXTO } from "./comun";
 
 interface Props {
   resultado: Resultado | null;
-  destinosPersonalizados: DestinoPersonalizado[];
+  /** Destinos de la misión: propuestos (M1…) y añadidos por la tripulación (P1…) */
+  destinosMision: DestinoMision[];
+  /** Nombre y tareas que se proponen al añadir un punto de referencia */
+  sugerencia?: { nombre: string; tareas: string[] } | null;
   seleccionando: boolean;
   puntoSeleccionado: { fila: number; columna: number } | null;
   onIniciarSeleccion: () => void;
   onCancelarSeleccion: () => void;
   onGuardarDestino: (datos: { nombre: string; tareas: string[] }) => void;
   onEliminarDestino: (id: string) => void;
+  /** Al abrir un destino, el mapa vuela hasta él */
+  onEnfocar?: (id: string) => void;
 }
 
+/** Columnas: destino · distancia · desnivel · probabilidad · flecha */
+const COLUMNAS = "grid grid-cols-[minmax(0,1fr)_3.9rem_3.7rem_3.3rem_0.75rem] items-center gap-x-2";
+
+const pct = (p: number) => `${Math.round(p * 100)} %`;
+const desnivel = (m: number | null) => (m === null ? "—" : `${m > 0 ? "+" : m < 0 ? "−" : ""}${Math.abs(m)} m`);
+
 /**
- * PERSONA 3 · Panel de destinos científicos de Curiosity (T1–T6) y destinos
- * personalizados elegidos directamente sobre el mapa.
- * Muestra nombre, distancia, desnivel y probabilidad. Al pulsar un destino se
- * despliega un resumen informativo de sus tareas, sin checkboxes ni límites.
+ * PERSONA 3 · Destinos de la misión: los propuestos (M1–M6) y los que añade la tripulación sobre el
+ * mapa (P1, P2…). Los sitios de Curiosity (T1–T6) no están aquí: en el mapa son puntos de
+ * referencia. Muestra distancia, desnivel y probabilidad de ir y volver. Al pulsar un destino se
+ * despliega su contexto y sus tareas y el mapa lo enfoca. Cualquiera se puede quitar del plan.
+ * Las marcas son las mismas que en el mapa (punto los propuestos, rombo los añadidos).
  */
 export default function TablaDestinos({
   resultado,
-  destinosPersonalizados,
+  destinosMision,
+  sugerencia = null,
   seleccionando,
   puntoSeleccionado,
   onIniciarSeleccion,
   onCancelarSeleccion,
   onGuardarDestino,
   onEliminarDestino,
+  onEnfocar,
 }: Props) {
   const [abierto, setAbierto] = useState<string | null>(null);
+  const alternar = (id: string) => {
+    if (abierto !== id) onEnfocar?.(id);
+    setAbierto(abierto === id ? null : id);
+  };
 
   return (
-    <div className="rounded-xl border border-stone-800 bg-stone-900/80 p-3 shadow-sm backdrop-blur">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-semibold tracking-wider text-stone-400 uppercase">Destinos</span>
-        <span className="text-[10px] text-stone-500">Clic para ver tareas</span>
-      </div>
-
+    <Seccion
+      id="titulo-destinos"
+      titulo="Destinos de la misión"
+      valor={<span className={`text-[12px] ${TEXTO.terciario}`}>Toca uno para verlo en el mapa</span>}
+    >
       {/* Cabecera de columnas */}
-      <div className="mb-1 grid grid-cols-[minmax(0,1fr)_3.2rem_3.2rem_2.6rem_0.75rem] items-center gap-1 px-1.5 text-[9px] font-medium uppercase tracking-wide text-stone-500">
+      <div className={`${COLUMNAS} px-2 pb-1 text-[11.5px] ${TEXTO.terciario}`} aria-hidden>
         <span>Destino</span>
-        <span className="text-right" title="Distancia">Dist.</span>
-        <span className="text-right" title="Desnivel">Desn.</span>
-        <span className="text-right" title="Probabilidad">Prob.</span>
+        <span className="text-right">Distancia</span>
+        <span className="text-right">Desnivel</span>
+        <span className="text-right">Ir y volver</span>
         <span />
       </div>
 
-      <div className="space-y-1">
-        {DESTINOS.map((t) => (
-          <FilaDestino
-            key={t.id}
-            etiqueta={t.id.replace("T", "")}
-            nombre={t.nombre}
-            distanciaKm={t.distanciaKm}
-            desnivelM={t.desnivelM}
-            probabilidad={resultado?.destinos.find((d) => d.id === t.id)?.p}
-            contexto={t.contexto}
-            tareas={t.tareas}
-            abierto={abierto === t.id}
-            onToggle={() => setAbierto((actual) => (actual === t.id ? null : t.id))}
-          />
-        ))}
-
-        {destinosPersonalizados.map((d) => (
+      <ul className={`divide-y divide-[#a0beff]/[0.1] border-y ${BORDE}`}>
+        {destinosMision.map((d) => (
           <FilaDestino
             key={d.id}
             etiqueta={d.id}
@@ -79,27 +77,31 @@ export default function TablaDestinos({
             distanciaKm={distanciaDesdeHabitatKm(d.fila, d.columna)}
             desnivelM={desnivelDesdeHabitatM(resultado, d.fila, d.columna)}
             probabilidad={resultado?.prob[d.fila * N + d.columna]}
-            contexto={`Destino personalizado · celda (${d.fila}, ${d.columna})`}
+            contexto={d.contexto ?? `Destino añadido por la tripulación · celda ${d.fila}, ${d.columna}`}
             tareas={d.tareas}
-            personalizado
+            personalizado={!d.propuesto}
             abierto={abierto === d.id}
-            onToggle={() => setAbierto((actual) => (actual === d.id ? null : d.id))}
+            onToggle={() => alternar(d.id)}
             onEliminar={() => onEliminarDestino(d.id)}
           />
         ))}
-      </div>
+        {destinosMision.length === 0 && (
+          <li className={`px-2 py-3 text-[12.5px] ${TEXTO.terciario}`}>Sin destinos. Añade uno en el mapa.</li>
+        )}
+      </ul>
 
-      {/* Alta de destinos personalizados */}
-      <div className="mt-2 border-t border-stone-800 pt-2">
+      {/* Alta de destinos sobre el mapa */}
+      <div className="mt-3">
         {seleccionando ? (
-          <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 text-center">
-            <p className="text-[10px] font-semibold text-amber-300">
-              Haz clic en el mapa para elegir el nuevo destino.
+          <div className={`flex items-center gap-3 rounded-[3px] border ${BORDE} border-l-2 border-l-[#ff8fd8] bg-[#060a17] py-1 pl-3 pr-1`} role="status">
+            <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#eaf0ff]">
+              Toca el punto en el mapa
+              <span className={`block text-[12px] ${TEXTO.terciario}`}>Al pasar por encima verás su probabilidad</span>
             </p>
             <button
               type="button"
               onClick={onCancelarSeleccion}
-              className="mt-1 text-[10px] text-stone-400 underline transition hover:text-stone-200"
+              className={`h-10 shrink-0 rounded-[3px] px-3 text-[13px] ${TEXTO.secundario} outline-none transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:ring-1 focus-visible:ring-white/60`}
             >
               Cancelar
             </button>
@@ -109,6 +111,7 @@ export default function TablaDestinos({
             key={`${puntoSeleccionado.fila}-${puntoSeleccionado.columna}`}
             fila={puntoSeleccionado.fila}
             columna={puntoSeleccionado.columna}
+            sugerencia={sugerencia}
             resultado={resultado}
             onGuardar={onGuardarDestino}
             onCancelar={onCancelarSeleccion}
@@ -117,13 +120,17 @@ export default function TablaDestinos({
           <button
             type="button"
             onClick={onIniciarSeleccion}
-            className="w-full rounded-lg border border-dashed border-stone-700 bg-stone-950/60 px-2 py-2 text-[11px] font-semibold text-amber-400 transition hover:border-amber-500/60 hover:bg-amber-500/10"
+            className={`flex h-11 w-full items-center justify-center gap-2 rounded-[3px] border border-dashed border-[#a0beff]/30 text-[13.5px] text-[#eaf0ff] outline-none transition-colors hover:border-[#a0beff]/50 hover:bg-white/[0.03] focus-visible:border-[#eaf0ff]/70`}
           >
-            + Añadir destino en el mapa
+            <svg width="14" height="14" viewBox="-7 -7 14 14" aria-hidden>
+              <path d="M0 -6v3.4M0 2.6V6M-6 0h3.4M2.6 0H6" stroke="#ff8fd8" strokeWidth="1.5" strokeLinecap="round" />
+              <circle r="1.2" fill="#ff8fd8" />
+            </svg>
+            Añadir destino en el mapa
           </button>
         )}
       </div>
-    </div>
+    </Seccion>
   );
 }
 
@@ -156,146 +163,102 @@ function FilaDestino({
 }: FilaDestinoProps) {
   const tieneProb = probabilidad !== undefined;
   const alcanzable = tieneProb && probabilidad >= 0.5;
-  const probTexto = tieneProb ? `${Math.round(probabilidad * 100)} %` : "sin calcular";
-  const desnivelTexto =
-    desnivelM === null ? "sin calcular" : `${desnivelM > 0 ? "+" : ""}${desnivelM} m`;
+  const probTexto = tieneProb ? pct(probabilidad) : "sin calcular";
 
   return (
-    <div
-      className={`overflow-hidden rounded-lg border transition-colors ${
-        abierto ? "border-amber-500/40 bg-amber-500/5" : "border-stone-800 bg-stone-950/60"
-      }`}
-    >
+    <li className={abierto ? "bg-[#060a17]" : ""}>
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={abierto}
         aria-controls={abierto ? `tareas-${etiqueta}` : undefined}
-        aria-label={`${nombre}: ${distanciaKm.toFixed(2)} km, desnivel ${desnivelTexto}, probabilidad ${probTexto}. ${
-          abierto ? "Ocultar" : "Ver"
-        } tareas.`}
-        className="grid w-full grid-cols-[minmax(0,1fr)_3.2rem_3.2rem_2.6rem_0.75rem] items-center gap-1 px-1.5 py-1.5 text-left transition hover:bg-stone-800/40 focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500/60"
+        aria-label={`${etiqueta} ${nombre}: ${num(distanciaKm, 2)} km, desnivel ${desnivel(desnivelM)}, probabilidad de ir y volver ${probTexto}. ${
+          abierto ? "Ocultar tareas" : "Ver en el mapa y sus tareas"
+        }.`}
+        className={`${COLUMNAS} min-h-10 w-full px-2 py-1.5 text-left outline-none transition-colors hover:bg-white/[0.03] focus-visible:bg-white/[0.05]`}
       >
-        <span className="flex min-w-0 items-center gap-1.5">
-          <span
-            className={`inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded px-0.5 text-[9px] font-bold ${
-              personalizado
-                ? "border border-amber-500/50 bg-amber-500/15 text-amber-300"
-                : alcanzable
-                ? "bg-amber-500 text-stone-950"
-                : "bg-stone-800 text-stone-400"
-            }`}
-          >
-            {etiqueta}
-          </span>
-          <span className="truncate text-[11px] font-semibold leading-tight text-stone-100">
-            {nombre}
-          </span>
+        <span className="flex min-w-0 items-center gap-2">
+          <MarcaDestino alcance={alcanzable} propio={personalizado} />
+          <span className={`${CIFRA} shrink-0 text-[11.5px] ${TEXTO.terciario}`}>{etiqueta}</span>
+          <span className="truncate text-[13.5px] text-[#eaf0ff]">{nombre}</span>
         </span>
-
-        <span className="whitespace-nowrap text-right font-mono text-[10px] text-stone-300">
-          {distanciaKm.toFixed(2)} km
+        <span className={`${CIFRA} whitespace-nowrap text-right text-[12px] ${TEXTO.secundario}`}>{num(distanciaKm, 2)} km</span>
+        <span className={`${CIFRA} whitespace-nowrap text-right text-[12px] ${desnivelM === null ? TEXTO.terciario : TEXTO.secundario}`}>
+          {desnivel(desnivelM)}
         </span>
-
-        <span
-          className={`whitespace-nowrap text-right font-mono text-[10px] ${
-            desnivelM === null
-              ? "text-stone-500"
-              : desnivelM > 50
-              ? "text-rose-400"
-              : desnivelM < 0
-              ? "text-emerald-400"
-              : "text-stone-400"
-          }`}
-        >
-          {desnivelM === null ? "—" : `${desnivelM > 0 ? "+" : ""}${desnivelM} m`}
+        <span className={`${CIFRA} whitespace-nowrap text-right text-[13px]`} style={{ color: alcanzable ? AMBAR : tieneProb ? "#eaf0ff" : "#8d9cc2" }}>
+          {tieneProb ? pct(probabilidad) : "—"}
         </span>
-
-        <span className="text-right">
-          {tieneProb ? (
-            <span
-              className={`inline-block rounded px-1 py-0.5 font-mono text-[10px] font-bold ${
-                alcanzable
-                  ? "border border-amber-500/30 bg-amber-500/20 text-amber-300"
-                  : probabilidad >= 0.1
-                  ? "bg-stone-800 text-stone-300"
-                  : "bg-stone-900/60 text-stone-500"
-              }`}
-            >
-              {probTexto}
-            </span>
-          ) : (
-            <span className="font-mono text-[10px] text-stone-600">—</span>
-          )}
-        </span>
-
-        <span className="text-center font-mono text-[9px] text-stone-500">
-          {abierto ? "▲" : "▼"}
-        </span>
+        <Chevron abierto={abierto} />
       </button>
 
       {abierto && (
-        <div
-          id={`tareas-${etiqueta}`}
-          className="border-t border-stone-800/70 bg-stone-950/40 px-2 pb-2 pt-1.5"
-        >
-          <p className="text-[10px] leading-snug text-stone-400">{contexto}</p>
-          <p className="mb-1 mt-1.5 text-[9px] font-semibold uppercase tracking-wider text-amber-400/90">
-            Tareas a realizar
-          </p>
+        <div id={`tareas-${etiqueta}`} className="px-2 pb-3 pl-[2.6rem]">
+          <p className={`text-[12.5px] leading-snug ${TEXTO.secundario}`}>{contexto}</p>
+          <p className={`mt-2 text-[12px] ${TEXTO.terciario}`}>Tareas previstas</p>
           {tareas.length > 0 ? (
-            <ul className="space-y-1">
+            <ul className="mt-1 space-y-1">
               {tareas.map((tarea, i) => (
-                <li
-                  key={`${etiqueta}-${i}`}
-                  className="flex items-start gap-1.5 text-[10px] leading-snug text-stone-300"
-                >
-                  <span className="mt-px shrink-0 font-bold text-amber-500">•</span>
+                <li key={`${etiqueta}-${i}`} className="flex items-start gap-2 text-[13px] leading-snug text-[#eaf0ff]">
+                  <span aria-hidden className="mt-[0.6em] h-px w-2 shrink-0 bg-[#8d9cc2]" />
                   <span>{tarea}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-[10px] italic text-stone-500">Sin tareas registradas.</p>
+            <p className={`mt-1 text-[12.5px] ${TEXTO.terciario}`}>Sin tareas registradas.</p>
           )}
 
-          {personalizado && onEliminar && (
+          {onEliminar && (
             <button
               type="button"
               onClick={onEliminar}
-              className="mt-2 text-[9px] font-semibold uppercase tracking-wider text-rose-400 transition hover:text-rose-300"
+              className={`-ml-2 mt-2 h-9 rounded-[3px] px-2 text-[12.5px] ${TEXTO.secundario} underline decoration-[#8d9cc2]/50 underline-offset-2 outline-none transition-colors hover:text-white focus-visible:ring-1 focus-visible:ring-white/60`}
             >
-              Eliminar destino
+              Quitar de la misión
             </button>
           )}
         </div>
       )}
-    </div>
+    </li>
   );
 }
 
 interface FormularioDestinoProps {
   fila: number;
   columna: number;
+  sugerencia: { nombre: string; tareas: string[] } | null;
   resultado: Resultado | null;
   onGuardar: (datos: { nombre: string; tareas: string[] }) => void;
   onCancelar: () => void;
 }
 
-function FormularioDestino({
-  fila,
-  columna,
-  resultado,
-  onGuardar,
-  onCancelar,
-}: FormularioDestinoProps) {
-  const [nombre, setNombre] = useState("");
-  const [tareas, setTareas] = useState<string[]>([]);
+const CAMPO = `w-full rounded-[3px] border ${BORDE} bg-[#0a0f1f] px-3 text-[13.5px] text-[#eaf0ff] outline-none transition-colors placeholder:text-[#8d9cc2]/70 focus:border-[#eaf0ff]/60`;
+
+function FormularioDestino({ fila, columna, sugerencia, resultado, onGuardar, onCancelar }: FormularioDestinoProps) {
+  const [nombre, setNombre] = useState(sugerencia?.nombre ?? "");
+  const [tareas, setTareas] = useState<string[]>(sugerencia?.tareas ?? []);
   const [nuevaTarea, setNuevaTarea] = useState("");
+  const raiz = useRef<HTMLDivElement>(null);
+  const campoNombre = useRef<HTMLInputElement>(null);
+
+  // Al aparecer (punto elegido en el mapa o «Añadir» desde la ficha) se ve y se escribe el nombre.
+  // En pantallas táctiles no se enfoca: el teclado taparía el mapa.
+  useEffect(() => {
+    raiz.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    let tactil = false;
+    try {
+      tactil = window.matchMedia("(pointer: coarse)").matches;
+    } catch {
+      /* sin matchMedia */
+    }
+    if (!tactil) campoNombre.current?.focus({ preventScroll: true });
+  }, []);
 
   const distanciaKm = distanciaDesdeHabitatKm(fila, columna);
   const desnivelM = desnivelDesdeHabitatM(resultado, fila, columna);
   const probabilidad = resultado?.prob[fila * N + columna];
+  const alcanzable = probabilidad !== undefined && probabilidad >= 0.5;
 
   const agregarTarea = () => {
     const tarea = nuevaTarea.trim();
@@ -315,73 +278,73 @@ function FormularioDestino({
   };
 
   return (
-    <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-2">
-      <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-[9px] font-semibold uppercase tracking-wider text-amber-400">
-          Nuevo destino
-        </span>
-        <span className="font-mono text-[9px] text-stone-500">
-          Celda ({fila}, {columna})
-        </span>
-      </div>
-
-      <input
-        type="text"
-        value={nombre}
-        onChange={(e) => setNombre(e.target.value)}
-        placeholder="Nombre del destino"
-        className="w-full rounded-md border border-stone-700 bg-stone-950 px-2 py-1.5 text-[11px] text-stone-100 placeholder:text-stone-600 focus:border-amber-500/60 focus:outline-none"
-      />
-
-      <div className="mt-1.5 grid grid-cols-3 gap-1">
-        <div className="rounded-md bg-stone-950/70 px-1.5 py-1">
-          <p className="text-[8px] uppercase tracking-wide text-stone-500">Distancia</p>
-          <p className="font-mono text-[10px] font-semibold text-stone-200">
-            {distanciaKm.toFixed(2)} km
-          </p>
-        </div>
-        <div className="rounded-md bg-stone-950/70 px-1.5 py-1">
-          <p className="text-[8px] uppercase tracking-wide text-stone-500">Desnivel</p>
-          <p className="font-mono text-[10px] font-semibold text-stone-200">
-            {desnivelM === null ? "—" : `${desnivelM > 0 ? "+" : ""}${desnivelM} m`}
-          </p>
-        </div>
-        <div className="rounded-md bg-stone-950/70 px-1.5 py-1">
-          <p className="text-[8px] uppercase tracking-wide text-stone-500">Probabilidad</p>
-          <p className="font-mono text-[10px] font-semibold text-stone-200">
-            {probabilidad === undefined ? "—" : `${Math.round(probabilidad * 100)} %`}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-2">
-        <p className="mb-1 text-[9px] font-semibold uppercase tracking-wider text-stone-400">
-          Tareas a realizar
+    <div ref={raiz} className={`scroll-my-3 rounded-[3px] border ${BORDE} border-l-2 border-l-[#ff8fd8] bg-[#060a17] p-3`}>
+      <div className="flex items-baseline justify-between">
+        <p className="text-[13.5px] font-medium text-[#eaf0ff]">Destino nuevo</p>
+        <p className={`${CIFRA} text-[11.5px] ${TEXTO.terciario}`}>
+          celda {fila}, {columna}
         </p>
+      </div>
 
+      {/* Lo que dice el modelo de ese punto */}
+      <dl className={`mt-2 grid grid-cols-3 divide-x divide-[#a0beff]/[0.12] border-y ${BORDE} py-1.5 text-center`}>
+        <div>
+          <dt className={`text-[11.5px] ${TEXTO.terciario}`}>Distancia</dt>
+          <dd className={`${CIFRA} text-[13px] text-[#eaf0ff]`}>{num(distanciaKm, 2)} km</dd>
+        </div>
+        <div>
+          <dt className={`text-[11.5px] ${TEXTO.terciario}`}>Desnivel</dt>
+          <dd className={`${CIFRA} text-[13px] text-[#eaf0ff]`}>{desnivel(desnivelM)}</dd>
+        </div>
+        <div>
+          <dt className={`text-[11.5px] ${TEXTO.terciario}`}>Ir y volver</dt>
+          <dd className={`${CIFRA} text-[13px]`} style={{ color: alcanzable ? AMBAR : "#eaf0ff" }}>
+            {probabilidad === undefined ? "—" : pct(probabilidad)}
+          </dd>
+        </div>
+      </dl>
+
+      <label className="mt-3 block">
+        <span className={`text-[12px] ${TEXTO.terciario}`}>Nombre</span>
+        <input
+          ref={campoNombre}
+          type="text"
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              guardar();
+            }
+          }}
+          placeholder="Nombre del destino"
+          className={`${CAMPO} mt-1 h-10`}
+        />
+      </label>
+
+      <div className="mt-3">
+        <p className={`text-[12px] ${TEXTO.terciario}`}>Tareas previstas</p>
         {tareas.length > 0 && (
-          <ul className="mb-1 space-y-1">
+          <ul className="mt-1 space-y-0.5">
             {tareas.map((tarea, i) => (
-              <li
-                key={`${tarea}-${i}`}
-                className="flex items-start gap-1.5 text-[10px] leading-snug text-stone-300"
-              >
-                <span className="mt-px shrink-0 font-bold text-amber-500">•</span>
-                <span className="min-w-0 flex-1">{tarea}</span>
+              <li key={`${tarea}-${i}`} className="flex items-center gap-2 text-[13px] text-[#eaf0ff]">
+                <span aria-hidden className="h-px w-2 shrink-0 bg-[#8d9cc2]" />
+                <span className="min-w-0 flex-1 truncate">{tarea}</span>
                 <button
                   type="button"
                   onClick={() => eliminarTarea(i)}
                   aria-label={`Quitar tarea: ${tarea}`}
-                  className="shrink-0 text-[10px] leading-none text-stone-500 transition hover:text-rose-400"
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[3px] ${TEXTO.terciario} outline-none transition-colors hover:text-white focus-visible:ring-1 focus-visible:ring-white/60`}
                 >
-                  ×
+                  <svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
+                    <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" />
+                  </svg>
                 </button>
               </li>
             ))}
           </ul>
         )}
-
-        <div className="flex gap-1">
+        <div className="mt-1 flex gap-1.5">
           <input
             type="text"
             value={nuevaTarea}
@@ -393,33 +356,35 @@ function FormularioDestino({
               }
             }}
             placeholder="Añadir tarea..."
-            className="min-w-0 flex-1 rounded-md border border-stone-700 bg-stone-950 px-2 py-1 text-[10px] text-stone-100 placeholder:text-stone-600 focus:border-amber-500/60 focus:outline-none"
+            className={`${CAMPO} h-10 min-w-0 flex-1`}
           />
           <button
             type="button"
             onClick={agregarTarea}
             disabled={!nuevaTarea.trim()}
-            className="rounded-md border border-stone-700 bg-stone-800 px-2 text-[11px] font-bold text-amber-400 transition hover:border-amber-500/60 hover:bg-stone-700 disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="Añadir tarea"
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[3px] border ${BORDE} text-[#eaf0ff] outline-none transition-colors hover:bg-white/[0.06] focus-visible:border-[#eaf0ff]/60 disabled:cursor-not-allowed disabled:opacity-40`}
           >
-            +
+            <svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
+              <path d="M6 1v10M1 6h10" />
+            </svg>
           </button>
         </div>
       </div>
 
-      <div className="mt-2 flex gap-1.5">
+      <div className="mt-3 flex gap-2">
         <button
           type="button"
           onClick={guardar}
           disabled={!nombre.trim()}
-          className="flex-1 rounded-md bg-amber-500 px-2 py-1.5 text-[10px] font-bold text-stone-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-10 flex-1 rounded-[3px] bg-[#eaf0ff] px-3 text-[13.5px] font-medium text-[#060a17] outline-none transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-[#ff8fd8]/70 disabled:cursor-not-allowed disabled:opacity-40"
         >
           Guardar destino
         </button>
         <button
           type="button"
           onClick={onCancelar}
-          className="rounded-md border border-stone-700 px-2 py-1.5 text-[10px] font-semibold text-stone-300 transition hover:bg-stone-800"
+          className={`h-10 rounded-[3px] border ${BORDE} px-3 text-[13.5px] ${TEXTO.secundario} outline-none transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:border-[#eaf0ff]/60`}
         >
           Cancelar
         </button>

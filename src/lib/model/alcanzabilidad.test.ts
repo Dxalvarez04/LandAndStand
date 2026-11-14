@@ -2,6 +2,7 @@
  * Test suite para la Capa 5: Alcanzabilidad (Dijkstra bidireccional y presupuestos).
  * Valida máscara de alcanzabilidad, radio cardinal, caminos de ida/vuelta y escenario Apolo.
  */
+import { expect, test } from "vitest";
 import { N, CENTRALES } from "../constants";
 import { construirGeometria } from "./grafo";
 import { alcanzable } from "./alcanzabilidad";
@@ -95,3 +96,9 @@ export function ejecutarTestsAlcanzabilidad() {
 
   return resultados;
 }
+
+// Ejecución con vitest (npm test): cada comprobación de la lista es un caso
+
+test.each(ejecutarTestsAlcanzabilidad())("$test", ({ ok, detalle }) => {
+  expect(ok, detalle).toBe(true);
+});

@@ -2,6 +2,7 @@
  * Test suite para la Capa 2: Fisiología.
  * Valida vo2max(s, p) y thetaMax(s, p) contra las especificaciones del modelo v3.1.
  */
+import { expect, test } from "vitest";
 import { vo2max, thetaMax } from "./fisiologia";
 import { CENTRALES } from "../constants";
 
@@ -80,3 +81,9 @@ export function ejecutarTestsFisiologia() {
 
   return resultados;
 }
+
+// Ejecución con vitest (npm test): cada comprobación de la lista es un caso
+
+test.each(ejecutarTestsFisiologia())("$test", ({ ok, detalle }) => {
+  expect(ok, detalle).toBe(true);
+});

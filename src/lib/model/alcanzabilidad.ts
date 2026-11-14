@@ -6,7 +6,7 @@
  * - Montículo binario indexado con arrays contiguos para máxima eficiencia.
  */
 import { P_DES, P_TASK, RHO, T_EVA, T_TASK } from "@/lib/constants";
-import { evaluarAristas, type Geometria } from "./grafo";
+import { evaluarAristas, type CostesAristas, type Geometria } from "./grafo";
 import type { Parametros } from "./tipos";
 
 export interface Alcance {
@@ -111,6 +111,36 @@ class IndexedMinHeap {
   }
 }
 
+/** Memoria de trabajo de alcanzable() por geometría: el Monte Carlo la llama cientos de veces seguidas. */
+interface Memoria {
+  costes: CostesAristas;
+  Eo: Float64Array;
+  To: Float64Array;
+  Eb: Float64Array;
+  Tb: Float64Array;
+  heap: IndexedMinHeap;
+}
+
+const memorias = new WeakMap<Geometria, Memoria>();
+
+function memoriaDe(geo: Geometria): Memoria {
+  let m = memorias.get(geo);
+  if (!m) {
+    const n = geo.offsets.length - 1;
+    const a = geo.destino.length;
+    m = {
+      costes: { energia: new Float32Array(a), tiempo: new Float32Array(a), factible: new Uint8Array(a) },
+      Eo: new Float64Array(n),
+      To: new Float64Array(n),
+      Eb: new Float64Array(n),
+      Tb: new Float64Array(n),
+      heap: new IndexedMinHeap(n),
+    };
+    memorias.set(geo, m);
+  }
+  return m;
+}
+
 /**
  * Calcula la alcanzabilidad de ida y vuelta para una configuración dada.
  *
@@ -128,9 +158,10 @@ export function alcanzable(
   energiaHoras: 6 | 4,
 ): Alcance {
   const numNodos = geo.offsets.length - 1;
+  const memo = memoriaDe(geo);
 
-  // 1. Evaluar costes de aristas para este sorteo/sol
-  const costes = evaluarAristas(geo, s, p);
+  // 1. Evaluar costes de aristas para este sorteo/sol (en memoria reutilizada: no se devuelven)
+  const costes = evaluarAristas(geo, s, p, memo.costes);
 
   // 2. Presupuestos y reservas
   const tEvaESeg = energiaHoras * 3600;
@@ -145,16 +176,15 @@ export function alcanzable(
   // Límites máximos que puede consumir la marcha (ida + vuelta)
   const eMarchaMax = ePresupuestoTotal - eTarea;
 
-  // Estructuras de datos para Dijkstra
-  const Eo = new Float64Array(numNodos).fill(Infinity);
-  const To = new Float64Array(numNodos).fill(Infinity);
+  // Estructuras de datos para Dijkstra (las de trabajo se reutilizan entre llamadas)
+  const { Eo, To, Eb, Tb, heap } = memo;
+  Eo.fill(Infinity);
+  To.fill(Infinity);
+  Eb.fill(Infinity);
+  Tb.fill(Infinity);
+  heap.clear();
   const predIda = new Int32Array(numNodos).fill(-1);
-
-  const Eb = new Float64Array(numNodos).fill(Infinity);
-  const Tb = new Float64Array(numNodos).fill(Infinity);
   const predVuelta = new Int32Array(numNodos).fill(-1);
-
-  const heap = new IndexedMinHeap(numNodos);
 
   // =========================================================================
   // PASO 1: Dijkstra de IDA (desde Hábitat, grafo directo, peso = energía)

@@ -2,6 +2,7 @@
  * Test suite para la Capa 4: Grafo del terreno (8 vecinos y formato CSR).
  * Valida topología, reciprocidad de aristas, cálculo de pendiente y factibilidad.
  */
+import { expect, test } from "vitest";
 import { N } from "../constants";
 import { CENTRALES } from "../constants";
 import { construirGeometria, evaluarAristas } from "./grafo";
@@ -110,3 +111,9 @@ export function ejecutarTestsGrafo() {
 
   return resultados;
 }
+
+// Ejecución con vitest (npm test): cada comprobación de la lista es un caso
+
+test.each(ejecutarTestsGrafo())("$test", ({ ok, detalle }) => {
+  expect(ok, detalle).toBe(true);
+});

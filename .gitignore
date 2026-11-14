@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# capturas de Playwright
+/.playwright-mcp/
+
+# caché de descargas de scripts/preparar_datos*.py
+/scripts/.cache/
