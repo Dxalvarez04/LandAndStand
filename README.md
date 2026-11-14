@@ -75,7 +75,7 @@ Tres personas desarrollan la herramienta. Katrina Espinar es la autora del model
 ### Persona 3 · Visual: el panel y los destinos
 
 - Deslizador de sol (1–30).
-- Selector de quién camina: población, tripulante editable o pareja.
+- Selector de quién camina: tripulante, pareja o grupo (a partir de 8 perfiles precalculados previstos al aterrizaje).
 - Selectores de escenario: intensidad (por defecto entre el 30 y el 40 %, o fija en 30, 35, 40, 47 o 50 %) y energía del traje (6 h o 4 h).
 - Tabla de destinos con distancia, desnivel y probabilidad.
 - Tarjetas con la foto de Curiosity («esto es lo que verás»). Los destinos se «encienden» al pasar del 50 %.
@@ -89,8 +89,8 @@ Es lo único que hay que acordar antes de separarse, y no se cambia después sin
 // La persona 3 lo modifica; la persona 1 lo recibe
 estado = {
   sol,                                    // 1..30
-  modo,                                   // "poblacion" | "tripulante" | "pareja"
-  tripulantes: [{ vo2pre, masa }],        // 1 en modo tripulante, 2 en modo pareja
+  modo,                                   // "tripulante" | "pareja" | "grupo"
+  tripulantes: [{ vo2pre, masa }],        // 1 en tripulante, 2 en pareja, 3 o más en grupo
   fwalk,                                  // "U" (U(0,30;0,40)) | 0.30 | 0.35 | 0.40 | 0.47 | 0.50
   energiaHoras                            // 6 | 4
 }
@@ -108,10 +108,25 @@ Mientras el cálculo no esté listo, las dos personas de lo visual trabajan con 
 
 - **Nunca «seguro» ni «zona segura».** Se dice «alcanzable bajo los supuestos indicados». En la capa de aterrizaje, «zona apta según la regla de pendiente supuesta».
 - **Solo el modelo M2.** El de Pandolf (M1) no reproduce los datos de Marte.
+- **Perfiles fijos previstos (no editables in situ):** Como la herramienta es una solución predictiva para cuando la tripulación llega y no puede medir su VO₂ ni su masa en el terreno marciano, se utilizan 8 perfiles modelados (`src/lib/data/perfiles.ts`), no editables manualmente.
+- **Modo Grupo añadido:** Permite coordinar expediciones de más de 2 astronautas caminando unidos; el radio conjunto queda limitado por el miembro más vulnerable del grupo.
 - **Zona de estudio:** la ventana de 3,52 × 3,52 km del DEM de Gale con seis sitios de muestreo de Curiosity, no la zona de boxwork de la idea original.
 - **Fuera de la demo:** radiación (RAD), meteorología (REMS), tormentas, lesión del compañero, CRISM y THEMIS. Se citan como «siguientes pasos» en el pitch.
 - **Opcional:** la capa de aterrizaje (capa 7). Para la demo basta con superponer el mapa ya calculado en Python, sin hábitat arrastrable. La capa analítica (capa 9) no se implementa.
 - **Plan B:** si el cálculo en el navegador no queda validado a tiempo, se precalculan los mapas en Python y se sirven como JSON con el mismo contrato. La interfaz no cambia.
+
+## Perfiles de astronautas previstos al aterrizaje (`src/lib/data/perfiles.ts`)
+
+| ID | Nombre y Rol | Arquetipo | VO₂pre (mL/kg/min) | Masa (kg) | Diagnóstico Operativo |
+|---|---|---|:---:|:---:|---|
+| **A1** | Dra. Elena Vega (Comandante) | Atleta de élite | 55,0 | 68 | Superdotada cardiovascular. Apta NASA desde el Sol 1. Máximo alcance (> 2,6 km). |
+| **A2** | Dr. Marcus Vance (Especialista) | Estándar ISS / Medio | 40,6 | 75 | Perfil canónico de referencia. Apto NASA a partir del Sol 7. |
+| **A3** | Ing. Lars Lindholm (Carga) | Fuerza / Masa pesada | 44,0 | 92 | Gran motor aeróbico, pero masa alta; limita la energía del traje antes que el tiempo. |
+| **A4** | Dra. Yasmine Al-Mansoor (Geóloga) | Ligera / Alta eficiencia | 46,0 | 54 | Mínimo consumo metabólico; máxima autonomía energética para travesías largas. |
+| **A5** | Dr. Alexei Morozov (Astrobiólogo) | Límite reglamentario | 36,5 | 78 | Límite previo NASA. Cae a 31 mL/kg/min post-aterrizaje; tarda semanas en recuperarse. |
+| **A6** | Dra. Chloe Bennett (Piloto) | Déficit de equilibrio | 48,0 | 70 | Gran resistencia pero afectación vestibular; bloqueada ante colinas empinadas. |
+| **A7** | Téc. Kenji Sato (Robótica) | Alto desacondicionamiento | 33,0 | 86 | Fuerte caída por ingravidez (-24%). Cuello de botella en salidas en grupo. |
+| **A8** | Dra. Sarah O'Connor (Médico) | Readaptación rápida | 43,0 | 65 | Recuperación biológica acelerada (tauA = 6 soles); al Sol 3 ya está al 95%. |
 
 ## Pendiente
 
@@ -119,7 +134,7 @@ Mientras el cálculo no esté listo, las dos personas de lo visual trabajan con 
 - [ ] Decidir entre calcular en el navegador (lo que pide la especificación) o precalcular en Python.
 - [ ] Comprobar en el enunciado si DEM, HiRISE y posiciones y fotos de Curiosity cuentan como los tres tipos de datos mínimos.
 - [ ] Elegir el stack de la web.
-- [ ] Definir los tripulantes ficticios de la demo (VO₂máx previo y masa).
+- [x] Definir los tripulantes ficticios de la demo (8 perfiles en `src/lib/data/perfiles.ts`, no editables in situ por premisa predictiva).
 - [ ] Fotos de Curiosity de cada destino, con su número PIA.
 
 ## Hitos
