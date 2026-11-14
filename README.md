@@ -6,6 +6,43 @@
  
 Web de demostración que muestra, sobre el terreno real del cráter Gale, la probabilidad de que un astronauta recién llegado, o una pareja, pueda ir a pie a cada punto y volver, según el sol de misión. La capa cambia al cambiar de tripulante, de sol o de escenario de diseño.
 
+## Arrancar
+
+```bash
+npm install
+npm run dev     # http://localhost:3000
+npm run build   # comprobar que compila antes de subir
+```
+
+Next.js 16 (App Router) + TypeScript + Tailwind 4. Ojo: Next 16 cambia APIs; ver `AGENTS.md` y `node_modules/next/dist/docs/`.
+
+## Estructura
+
+```
+src/
+├── app/page.tsx              # Monta todo: guarda el `estado` y pasa el `resultado`
+├── lib/
+│   ├── contract.ts           # ⚠️ EL CONTRATO (Estado, Resultado y mensajes del worker)
+│   ├── constants.ts          # Constantes de la especificación y valores centrales
+│   ├── data/targets.ts       # Hábitat, T1–T6, km→celda (truncando) y celda→lat/lon
+│   ├── mock/resultadoFalso.ts# Resultado inventado mientras no hay cálculo real
+│   └── model/                # PERSONA 1 · capas 2–6
+│       ├── fisiologia.ts     #   capa 2
+│       ├── marcha.ts         #   capa 3 (M2)
+│       ├── grafo.ts          #   capa 4
+│       ├── alcanzabilidad.ts #   capa 5 (Dijkstra ida + vuelta inverso)
+│       ├── montecarlo.ts     #   capa 6
+│       └── index.ts          #   calcular(): hoy devuelve el mock (MODELO_REAL = false)
+├── workers/modelo.worker.ts  # Web Worker: recibe Estado y devuelve Resultado
+├── hooks/useModelo.ts        # Conecta la UI con el worker (resultado, progreso)
+└── components/
+    ├── mapa/                 # PERSONA 2 · Mapa.tsx, Inspector.tsx
+    └── panel/                # PERSONA 3 · sol, caminante, escenario, tabla, tarjetas, supuestos, créditos
+public/
+├── data/                     # DEM, HiRISE, targets, posteriores y sorteos (pendiente de Katrina)
+└── fotos/                    # Fotos de Curiosity por destino
+```
+
 ## Documentos
 
 | Archivo | Qué contiene |
