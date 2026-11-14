@@ -20,149 +20,133 @@ Next.js 16 (App Router) + TypeScript + Tailwind 4. Ojo: Next 16 cambia APIs; ver
 
 ```
 src/
-├── app/page.tsx              # Monta todo: guarda el `estado` y pasa el `resultado`
+├── app/page.tsx              # Mounts everything: stores the `estado` and passes the `resultado`
 ├── lib/
-│   ├── contract.ts           # ⚠️ EL CONTRATO (Estado, Resultado y mensajes del worker)
-│   ├── constants.ts          # Constantes de la especificación y valores centrales
-│   ├── data/targets.ts       # Hábitat, referencias T1–T6, destinos de la misión M1–M6, km→celda (truncando) y celda→lat/lon
-│   ├── mock/resultadoFalso.ts# Resultado inventado mientras no hay cálculo real
-│   └── model/                # PERSONA 1 · capas 2–6
-│       ├── fisiologia.ts     #   capa 2
-│       ├── marcha.ts         #   capa 3 (M2)
-│       ├── grafo.ts          #   capa 4
-│       ├── alcanzabilidad.ts #   capa 5 (Dijkstra ida + vuelta inverso)
-│       ├── montecarlo.ts     #   capa 6
-│       └── index.ts          #   calcular(): hoy devuelve el mock (MODELO_REAL = false)
-├── workers/modelo.worker.ts  # Web Worker: suma su tramo de sorteos (varios en paralelo) y calcula rutas
-├── hooks/useModelo.ts        # Reparte el cálculo entre los workers y junta el resultado (resultado, progreso)
+│   ├── contract.ts           # ⚠️ THE CONTRACT (Estado, Resultado and worker messages)
+│   ├── constants.ts          # Specification constants and central values
+│   ├── data/targets.ts       # Habitat, reference points T1–T6, mission destinations M1–M6, km→cell (truncating) and cell→lat/lon
+│   ├── mock/resultadoFalso.ts# Made-up result until there is a real calculation
+│   └── model/                # PERSON 1 · layers 2–6
+│       ├── fisiologia.ts     #   layer 2
+│       ├── marcha.ts         #   layer 3 (M2)
+│       ├── grafo.ts          #   layer 4
+│       ├── alcanzabilidad.ts #   layer 5 (outbound Dijkstra + reverse return)
+│       ├── montecarlo.ts     #   layer 6
+│       └── index.ts          #   calcular(): currently returns the mock (MODELO_REAL = false)
+├── workers/modelo.worker.ts  # Web Worker: adds up its share of the draws (several in parallel) and computes routes
+├── hooks/useModelo.ts        # Splits the calculation across the workers and merges the result (resultado, progreso)
 └── components/
-    ├── mapa/                 # PERSONA 2 · Mapa.tsx, Inspector.tsx
-    └── panel/                # PERSONA 3 · sol, caminante, escenario, tabla, tarjetas, supuestos, créditos
+    ├── mapa/                 # PERSON 2 · Mapa.tsx, Inspector.tsx
+    └── panel/                # PERSON 3 · sol, walker, scenario, table, cards, assumptions, credits
 public/
-├── data/                     # DEM, HiRISE, targets, posteriores y sorteos (pendiente de Katrina)
-└── fotos/                    # Fotos de Curiosity de cada punto de referencia
-```
+├── data/                     # DEM, HiRISE, targets, posteriors and draws (pending from Katrina)
+└── fotos/                    # Curiosity photos of each reference point
+````
 
-## Documentos
+## Documents
 
-| Archivo | Qué contiene |
+| File | What it contains |
 |---|---|
-| [`docs/especificacion_algoritmos.md`](docs/especificacion_algoritmos.md) | **La referencia para programar.** Las capas de la herramienta, sus fórmulas, el protocolo de validación y los errores típicos. |
-| [`docs/especificacion_algoritmos.docx`](docs/especificacion_algoritmos.docx) | El original de la especificación, con figuras. |
-| [`docs/informe_tecnico.md`](docs/informe_tecnico.md) | Informe técnico revisado: modelo, resultados, limitaciones, guion del vídeo, diapositivas y preguntas del jurado. |
-| [`docs/idea_original.md`](docs/idea_original.md) | La propuesta inicial y qué ha cambiado desde entonces. |
+| [`docs/especificacion_algoritmos.md`](docs/especificacion_algoritmos.md) | **The reference for coding.** The tool's layers, their formulas, the validation protocol and common mistakes. |
+| [`docs/especificacion_algoritmos.docx`](docs/especificacion_algoritmos.docx) | The original specification, with figures. |
+| [`docs/informe_tecnico.md`](docs/informe_tecnico.md) | Revised technical report: model, results, limitations, video script, slides and jury questions. |
+| [`docs/idea_original.md`](docs/idea_original.md) | The initial proposal and what has changed since then. |
 
-## Equipo y reparto
+## Team and roles
 
-Tres personas desarrollan la herramienta. Katrina Espinar es la autora del modelo y la referencia científica, pero no participa en el desarrollo.
+Three people are developing the tool. Katrina Espinar is the author of the model and the scientific reference, but she is not involved in development.
 
-### Persona 1 · Cálculo (capa fisiológica sobre el terreno)
+### Person 1 · Computation (physiological layer over the terrain)
 
-- Capas 1–6 de la especificación: fisiología, marcha con traje, grafo de 8 vecinos, Dijkstra de ida y vuelta (la vuelta sobre el grafo inverso) y Monte Carlo para tripulante, pareja y grupo.
-- Corre en Web Workers: los 300 sorteos se reparten entre varios (hasta 6, según los núcleos) y la página junta los conteos; el resultado es idéntico al de un solo worker. Un estado nuevo deja obsoleto el cálculo en curso, así que arrastrar un deslizador no acumula cálculos en cola (ver más abajo).
-- **Terminado cuando** reproduce el protocolo de validación de la sección 10: llano el sol 1 ≈ 0,22 m/s y ≈ 1,7 km; Rock Hall = 0,290 el sol 1 con `draws_seed11_300.json`.
-- Si Katrina comparte el repo de Python, el trabajo se reduce a exportar las capas ya calculadas a JSON.
+- Layers 1–6 of the specification: physiology, suited walking, 8-neighbour graph, outbound and return Dijkstra (the return on the reverse graph) and Monte Carlo for crew member, pair and group.
+- Runs in Web Workers: the 300 draws are split across several (up to 6, depending on the cores) and the page merges the counts; the result is identical to that of a single worker. A new state makes the calculation in progress obsolete, so dragging a slider does not queue up calculations (see below).
+- **Done when** it reproduces the validation protocol in section 10: flat ground on sol 1 ≈ 0.22 m/s and ≈ 1.7 km; Rock Hall = 0.290 on sol 1 with `draws_seed11_300.json`.
+- If Katrina shares the Python repo, the work comes down to exporting the already computed layers to JSON.
 
-### Persona 2 · Visual: el mapa
+### Person 2 · Visual: the map
 
-- Fondo HiRISE y capa de probabilidad en viridis, transparente por debajo del 2 %.
-- Contornos del 50 % y del 90 % (*marching squares*, por ejemplo con d3-contour).
-- Hábitat, destinos de la misión (M1–M6 y los que añade la tripulación) y puntos de referencia de Curiosity (T1–T6), con su porcentaje.
-- Inspector al hacer clic en una celda: coordenadas, probabilidad y ruta ilustrativa de ida y vuelta.
-- Animación al cambiar de sol.
-- ⚠️ El DEM tiene el **sur en la fila 0**, pero la imagen tiene el **norte arriba**: hay que invertir las filas al pintar.
+- HiRISE background and probability layer in viridis, transparent below 2%.
+- 50% and 90% contours (*marching squares*, for example with d3-contour).
+- Habitat, mission destinations (M1–M6 and those added by the crew) and Curiosity reference points (T1–T6), with their percentage.
+- Inspector when clicking a cell: coordinates, probability and illustrative out-and-back route.
+- Animation when changing sol.
+- ⚠️ The DEM has **south in row 0**, but the image has **north at the top**: the rows must be flipped when drawing.
 
-### Persona 3 · Visual: el panel y los destinos
+### Person 3 · Visual: the panel and the destinations
 
-- Deslizador de sol (1–30).
-- Selector de quién camina: tripulación seleccionable sin límite (una o más personas) a partir de los 8 perfiles precalculados previstos al aterrizaje.
-- Selector de escenario: intensidad (por defecto 35 %; opciones fijas de 30, 35, 40, 45 y 50 %). La energía del traje queda fija en 6 h en esta vista.
-- Tabla de **destinos de la misión** con distancia, desnivel y probabilidad; al pulsar uno se despliega un resumen de sus tareas y el mapa vuela hasta él. Empieza con seis destinos propuestos (M1–M6, elegidos sobre el DEM y la imagen HiRISE: unos se alcanzan el sol 1 y otros solo más adelante o nunca en 30 soles); se pueden quitar y añadir los propios sobre el mapa (P1, P2…), también desde la ficha de un punto o de un punto de referencia con «Añadir a los destinos de la misión».
-- Los sitios de Curiosity (T1–T6) no son destinos de la misión: en el mapa son **puntos de referencia** (anillo hueco), con su foto y su porcentaje.
-- El panel flota sobre el mapa y se esconde con la pestaña de su borde; entra cuando la cámara ya está en la zona de estudio.
-- Tarjetas con la foto de Curiosity («esto es lo que verás»). Los destinos se «encienden» al pasar del 50 %.
-- Panel de supuestos siempre visible, créditos y barra de progreso mientras calcula.
+- Sol slider (1–30).
+- Selector of who walks: crew selectable without limit (one or more people) from the 8 precomputed profiles forecast at landing.
+- Scenario selector: intensity (35% by default; fixed options of 30, 35, 40, 45 and 50%). Suit energy is fixed at 6 h in this view.
+- Table of **mission destinations** with distance, elevation change and probability; clicking one expands a summary of its tasks and the map flies to it. It starts with six proposed destinations (M1–M6, chosen on the DEM and the HiRISE image: some are reachable on sol 1 and others only later or never within 30 sols); they can be removed and your own can be added on the map (P1, P2…), also from the card of a point or a reference point with "Add to mission destinations".
+- The Curiosity sites (T1–T6) are not mission destinations: on the map they are **reference points** (hollow ring), with their photo and their percentage.
+- The panel floats over the map and is hidden with the tab on its edge; it slides in once the camera is already over the study area.
+- Cards with the Curiosity photo ("this is what you'll see"). Destinations "light up" when they go above 50%.
+- Assumptions panel always visible, credits and progress bar while calculating.
 
-## El contrato entre las tres partes
+## The contract between the three parts
 
-Es lo único que hay que acordar antes de separarse, y no se cambia después sin avisar a los otros dos.
+It is the only thing that has to be agreed before splitting up, and it is not changed afterwards without telling the other two.
 
 ```js
-// La persona 3 lo modifica; la persona 1 lo recibe
+// Person 3 modifies it; person 1 receives it
 estado = {
   sol,                                    // 1..30
   modo,                                   // "tripulante" | "pareja" | "grupo"
-  tripulantes: [{ vo2pre, masa }],        // 1 en tripulante, 2 en pareja, 3+ en grupo (sin límite)
-  fwalk,                                  // "U" (U(0,30;0,40)) | 0.30 | 0.35 | 0.40 | 0.45 | 0.50
+  tripulantes: [{ vo2pre, masa }],        // 1 in tripulante, 2 in pareja, 3+ in grupo (no limit)
+  fwalk,                                  // "U" (U(0.30;0.40)) | 0.30 | 0.35 | 0.40 | 0.45 | 0.50
   energiaHoras                            // 6 | 4
 }
 
-// La persona 1 lo devuelve; la persona 2 lo pinta en el mapa y la persona 3 en la tabla
+// Person 1 returns it; person 2 draws it on the map and person 3 in the table
 resultado = {
-  prob: Float32Array(12100),              // 110 × 110, fila 0 = SUR, columna 0 = oeste
-  elevacion: Float32Array(12100),         // opcional: DEM en metros, fila 0 = SUR
+  prob: Float32Array(12100),              // 110 × 110, row 0 = SOUTH, column 0 = west
+  elevacion: Float32Array(12100),         // optional: DEM in metres, row 0 = SOUTH
   destinos: [{ id: "T3", p: 0.29 }, ...]
 }
 ```
 
-Mientras el cálculo no esté listo, las dos personas de lo visual trabajan con un `resultado` inventado, por ejemplo una probabilidad que baja con la distancia al hábitat. Así nadie espera a nadie.
+While the calculation is not ready, the two people working on the visuals use a made-up `resultado`, for example a probability that decreases with distance from the habitat. That way nobody waits for anybody.
 
-## Decisiones tomadas
+## Decisions made
 
-- **Nunca «seguro» ni «zona segura».** Se dice «alcanzable bajo los supuestos indicados». En la capa de aterrizaje, «zona apta según la regla de pendiente supuesta».
-- **Solo el modelo M2.** El de Pandolf (M1) no reproduce los datos de Marte.
-- **Perfiles fijos previstos (no editables in situ):** Como la herramienta es una solución predictiva para cuando la tripulación llega y no puede medir su VO₂ ni su masa en el terreno marciano, se utilizan 8 perfiles modelados (`src/lib/data/perfiles.ts`), no editables manualmente.
-- **Modo Grupo añadido:** Permite coordinar expediciones de más de 2 astronautas caminando unidos; el radio conjunto queda limitado por el miembro más vulnerable del grupo.
-- **Zona de estudio:** la ventana de 3,52 × 3,52 km del DEM de Gale con seis sitios de muestreo de Curiosity, no la zona de boxwork de la idea original.
-- **Fuera de la demo:** radiación (RAD), meteorología (REMS), tormentas, lesión del compañero, CRISM y THEMIS. Se citan como «siguientes pasos» en el pitch.
-- **Opcional:** la capa de aterrizaje (capa 7). Para la demo basta con superponer el mapa ya calculado en Python, sin hábitat arrastrable. La capa analítica (capa 9) no se implementa.
-- **Plan B:** si el cálculo en el navegador no queda validado a tiempo, se precalculan los mapas en Python y se sirven como JSON con el mismo contrato. La interfaz no cambia.
+- **Never "safe" or "safe zone".** We say "reachable under the stated assumptions". In the landing layer, "suitable area according to the assumed slope rule".
+- **Only model M2.** Pandolf's model (M1) does not reproduce the Mars data.
+- **Fixed forecast profiles (not editable on site):** Since the tool is a predictive solution for when the crew arrives and cannot measure their VO₂ or mass on Martian ground, 8 modelled profiles are used (`src/lib/data/perfiles.ts`), which cannot be edited manually.
+- **Group mode added:** Allows coordinating expeditions of more than 2 astronauts walking together; the joint radius is limited by the most vulnerable member of the group.
+- **Study area:** the 3.52 × 3.52 km window of the Gale DEM with six Curiosity sampling sites, not the boxwork area from the original idea.
+- **Out of the demo:** radiation (RAD), meteorology (REMS), storms, partner injury, CRISM and THEMIS. They are mentioned as "next steps" in the pitch.
+- **Optional:** the landing layer (layer 7). For the demo it is enough to overlay the map already computed in Python, without a draggable habitat. The analytical layer (layer 9) is not implemented.
+- **Plan B:** if the in-browser calculation is not validated in time, the maps are precomputed in Python and served as JSON with the same contract. The interface does not change.
 
-## Perfiles de astronautas previstos al aterrizaje (`src/lib/data/perfiles.ts`)
+## Astronaut profiles forecast at landing (`src/lib/data/perfiles.ts`)
 
-| ID | Nombre y Rol | Arquetipo | VO₂pre (mL/kg/min) | Masa (kg) | Diagnóstico Operativo |
+| ID | Name and Role | Archetype | VO₂pre (mL/kg/min) | Mass (kg) | Operational Assessment |
 |---|---|---|:---:|:---:|---|
-| **A1** | Dra. Elena Vega (Comandante) | Atleta de élite | 55,0 | 68 | Superdotada cardiovascular. Apta NASA desde el Sol 1. Máximo alcance (> 2,6 km). |
-| **A2** | Dr. Marcus Vance (Especialista) | Estándar ISS / Medio | 40,6 | 75 | Perfil canónico de referencia. Apto NASA a partir del Sol 7. |
-| **A3** | Ing. Lars Lindholm (Carga) | Fuerza / Masa pesada | 44,0 | 92 | Gran motor aeróbico, pero masa alta; limita la energía del traje antes que el tiempo. |
-| **A4** | Dra. Yasmine Al-Mansoor (Geóloga) | Ligera / Alta eficiencia | 46,0 | 54 | Mínimo consumo metabólico; máxima autonomía energética para travesías largas. |
-| **A5** | Dr. Alexei Morozov (Astrobiólogo) | Límite reglamentario | 36,5 | 78 | Límite previo NASA. Cae a 31 mL/kg/min post-aterrizaje; tarda semanas en recuperarse. |
-| **A6** | Dra. Chloe Bennett (Piloto) | Déficit de equilibrio | 48,0 | 70 | Gran resistencia pero afectación vestibular; bloqueada ante colinas empinadas. |
-| **A7** | Téc. Kenji Sato (Robótica) | Alto desacondicionamiento | 33,0 | 86 | Fuerte caída por ingravidez (-24%). Cuello de botella en salidas en grupo. |
-| **A8** | Dra. Sarah O'Connor (Médico) | Readaptación rápida | 43,0 | 65 | Recuperación biológica acelerada (tauA = 6 soles); al Sol 3 ya está al 95%. |
+| **A1** | Dr. Elena Vega (Commander) | Elite athlete | 55.0 | 68 | Cardiovascularly gifted. NASA-fit from Sol 1. Maximum range (> 2.6 km). |
+| **A2** | Dr. Marcus Vance (Specialist) | ISS standard / Average | 40.6 | 75 | Canonical reference profile. NASA-fit from Sol 7. |
+| **A3** | Eng. Lars Lindholm (Cargo) | Strength / Heavy mass | 44.0 | 92 | Large aerobic engine, but high mass; limits suit energy before time. |
+| **A4** | Dr. Yasmine Al-Mansoor (Geologist) | Light / High efficiency | 46.0 | 54 | Minimal metabolic consumption; maximum energy autonomy for long traverses. |
+| **A5** | Dr. Alexei Morozov (Astrobiologist) | Regulatory limit | 36.5 | 78 | NASA pre-flight limit. Drops to 31 mL/kg/min after landing; takes weeks to recover. |
+| **A6** | Dr. Chloe Bennett (Pilot) | Balance deficit | 48.0 | 70 | High endurance but vestibular impairment; blocked on steep hills. |
+| **A7** | Tech. Kenji Sato (Robotics) | Severe deconditioning | 33.0 | 86 | Sharp drop due to weightlessness (-24%). Bottleneck on group outings. |
+| **A8** | Dr. Sarah O'Connor (Physician) | Rapid readaptation | 43.0 | 65 | Accelerated biological recovery (tauA = 6 sols); by Sol 3 she is already at 95%. |
 
-## Pendiente
+## To do
 
-- [ ] **Pedir a Katrina** la carpeta `data/` (`dem_real.npy`, `aoi_color.jpg`, posteriores), `docs/targets/targets.json`, `results/draws_seed11_300.json` y `results/real_prob_con.npy`. Pedir también el repo de Python (`src/landstand/`), si lo tiene. Sin `data/` no se puede empezar el cálculo real.
-- [ ] Sustituir la elevación provisional del mock (`src/lib/mock/elevacionFalsa.ts`) por el DEM real cuando esté disponible.
-- [ ] Decidir entre calcular en el navegador (lo que pide la especificación) o precalcular en Python.
-- [ ] Comprobar en el enunciado si DEM, HiRISE y posiciones y fotos de Curiosity cuentan como los tres tipos de datos mínimos.
-- [ ] Elegir el stack de la web.
-- [x] Definir los tripulantes ficticios de la demo (8 perfiles en `src/lib/data/perfiles.ts`, no editables in situ por premisa predictiva).
-- [x] Fotos de Curiosity de cada destino, con su número PIA (`public/fotos/`, ver `docs/fuentes.md`).
+- [ ] **Ask Katrina** for the `data/` folder (`dem_real.npy`, `aoi_color.jpg`, posteriors), `docs/targets/targets.json`, `results/draws_seed11_300.json` and `results/real_prob_con.npy`. Also ask for the Python repo (`src/landstand/`), if she has it. Without `data/` the real calculation cannot start.
+- [ ] Replace the provisional elevation in the mock (`src/lib/mock/elevacionFalsa.ts`) with the real DEM when it is available.
+- [ ] Decide between computing in the browser (what the specification asks for) or precomputing in Python.
+- [ ] Check in the challenge statement whether DEM, HiRISE and Curiosity positions and photos count as the three minimum data types.
+- [ ] Choose the web stack.
+- [x] Define the fictional crew members for the demo (8 profiles in `src/lib/data/perfiles.ts`, not editable on site due to the predictive premise).
+- [x] Curiosity photos of each destination, with their PIA number (`public/fotos/`, see `docs/fuentes.md`).
 
-## Hitos
+## Milestones
 
-1. Contrato acordado. Mapa y panel funcionando con datos inventados. Paso 1 de validación superado.
-2. Cálculo real integrado en la interfaz y paso 2 de validación superado.
-3. Código congelado unas horas antes del cierre y vídeo grabado con la versión final.
+1. Contract agreed. Map and panel working with made-up data. Validation step 1 passed.
+2. Real calculation integrated into the interface and validation step 2 passed.
+3. Code frozen a few hours before the deadline and video recorded with the final version.
 
-## Fuentes oficiales de datos
+## Official data sources
 
-Lista completa, con tamaños y detalles comprobados, en [`docs/fuentes.md`](docs/fuentes.md). Todo está en la misma proyección (equirectangular de Marte, meridiano central 0°, R = 3 396 190 m) que la ventana de estudio.
-
-| Dato | Enlace oficial | Uso |
-|---|---|---|
-| DEM de Gale, 1 m | [Ficha USGS](https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m) · [descarga, 3,6 GB](https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/MSL/MSL_Gale_DEM_Mosaic_1m_v3.tif) | Terreno del cálculo |
-| Mosaico HiRISE en color, 25 cm | [Ficha USGS](https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_orthophoto_mosaic_25cm) · [descarga, ~1 GB](https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/MSL/MSL_Gale_HiRISE-LRGB_78quads_sharp_cog.tif) | Fondo del mapa |
-| Posiciones de Curiosity | [MSL_waypoints.json (MMGIS)](https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json) | Situar los destinos |
-| Fotos de los destinos | NASA Photojournal, una por destino ([PIA11241](https://photojournal.jpl.nasa.gov/catalog/PIA11241), …) | Vista previa y visor del mapa |
-
-Alternativas: [DTM HiRISE sueltos](https://www.uahirise.org/dtm/), [mosaico HRSC de Gale a 30 m](https://doi.org/10.5281/zenodo.5808354), [índice de DEM de Marte (UCLA)](https://github.com/GALE-Lab/Mars_DEMs).
-
-## Créditos de datos (deben aparecer en la herramienta)
-
-- **Terreno:** USGS Astrogeology, MSL Gale Merged DEM 1 m v3 (Calef y Parker, 2016).
-- **Imagen:** HiRISE, NASA/JPL-Caltech/University of Arizona.
-- **Posiciones de los destinos:** NASA/JPL-Caltech, archivo de posiciones de Curiosity.
-- **Fotos de los destinos:** NASA/JPL-Caltech/MSSS, con su número PIA.
+Full list, with verified sizes and details, in [`docs/fuentes.md`](docs/fuentes.md). Everything is in the
