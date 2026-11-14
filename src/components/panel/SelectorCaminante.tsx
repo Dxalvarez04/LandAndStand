@@ -3,7 +3,8 @@
 import { useState } from "react";
 import type { Modo, Tripulante } from "@/lib/contract";
 import { PERFILES_ASTRONAUTAS, type PerfilAstronauta } from "@/lib/data/perfiles";
-import { BORDE, Chevron, CIFRA, num, Seccion, TEXTO } from "./comun";
+import { enIdioma, useIdioma } from "@/lib/i18n";
+import { BORDE, Chevron, CIFRA, Seccion, TEXTO } from "./comun";
 
 interface Props {
   modo: Modo;
@@ -42,7 +43,9 @@ export default function SelectorCaminante({ modo, tripulantes, onModo, onTripula
     idsDesdeTripulantes(tripulantes),
   );
 
-  const etiquetaModo = modo === "tripulante" ? "Tripulante" : modo === "pareja" ? "Pareja" : "Grupo";
+  const { t, idioma, num } = useIdioma();
+  const etiquetaModo = t.modo[modo];
+  const perfiles = PERFILES_ASTRONAUTAS.map((p) => enIdioma(p, idioma));
 
   const toggleTripulante = (id: string) => {
     let nuevos: string[];
@@ -70,13 +73,13 @@ export default function SelectorCaminante({ modo, tripulantes, onModo, onTripula
   };
 
   const elegidos = seleccionados
-    .map((id) => PERFILES_ASTRONAUTAS.find((p) => p.id === id))
+    .map((id) => perfiles.find((p) => p.id === id))
     .filter((p): p is PerfilAstronauta => Boolean(p));
 
   return (
     <Seccion
       id="titulo-caminante"
-      titulo="Quién camina"
+      titulo={t.caminaTitulo}
       valor={
         <span className={`text-[13px] ${TEXTO.secundario}`}>
           {etiquetaModo} <span className={`${CIFRA} text-[#eaf0ff]`}>· {seleccionados.length}</span>
@@ -100,24 +103,24 @@ export default function SelectorCaminante({ modo, tripulantes, onModo, onTripula
               </span>
             ))
           ) : (
-            <span className={`text-[13.5px] ${TEXTO.terciario}`}>Elegir tripulantes</span>
+            <span className={`text-[13.5px] ${TEXTO.terciario}`}>{t.elegirTripulantes}</span>
           )}
         </span>
-        <span className={`shrink-0 text-[12px] ${TEXTO.terciario}`}>{desplegado ? "Cerrar" : "Cambiar"}</span>
+        <span className={`shrink-0 text-[12px] ${TEXTO.terciario}`}>{desplegado ? t.cerrar : t.cambiar}</span>
         <Chevron abierto={desplegado} />
       </button>
 
       {/* Los 8 perfiles previstos: se marca a quienes salen (sin límite) */}
       {desplegado && (
         <ul id="lista-tripulantes" className={`mt-2 divide-y divide-[#a0beff]/[0.1] rounded-[3px] border ${BORDE} bg-[#060a17]`}>
-          {PERFILES_ASTRONAUTAS.map((p: PerfilAstronauta) => {
+          {perfiles.map((p: PerfilAstronauta) => {
             const marcado = seleccionados.includes(p.id);
             const ultimo = marcado && seleccionados.length === 1;
             return (
               <li key={p.id}>
                 <label
                   className={`flex cursor-pointer items-start gap-3 px-3 py-2.5 transition-colors hover:bg-white/[0.03] ${ultimo ? "cursor-not-allowed" : ""}`}
-                  title={ultimo ? "Tiene que salir al menos una persona" : undefined}
+                  title={ultimo ? t.alMenosUno : undefined}
                 >
                   <input
                     type="checkbox"
@@ -158,7 +161,7 @@ export default function SelectorCaminante({ modo, tripulantes, onModo, onTripula
             );
           })}
           <li className={`px-3 py-2 text-[11.5px] ${TEXTO.terciario}`}>
-            VO₂ previo en mL/kg/min y masa. Perfiles fijos: en Marte no se pueden medir.
+            {t.notaPerfiles}
           </li>
         </ul>
       )}

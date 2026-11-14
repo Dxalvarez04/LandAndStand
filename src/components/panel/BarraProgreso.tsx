@@ -1,5 +1,7 @@
 "use client";
 
+import { useIdioma } from "@/lib/i18n";
+
 interface Props {
   progreso: number;
   visible: boolean;
@@ -12,11 +14,12 @@ interface Props {
  */
 export default function BarraProgreso({ progreso, visible }: Props) {
   const porcentaje = Math.round(progreso * 100);
+  const { t } = useIdioma();
 
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[2px]">
       <span role="status" aria-live="polite" className="sr-only">
-        {visible ? "Calculando el escenario" : ""}
+        {visible ? t.calculandoEscenario : ""}
       </span>
       <div
         aria-hidden

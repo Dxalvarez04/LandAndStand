@@ -2,7 +2,7 @@
  * Lo que se «pinta» sobre el terreno 3D dentro de la zona de estudio, en un lienzo cuadrado norte arriba:
  *   - probabilidad (viridis, transparente por debajo del 2 %): la misma imagen que el mapa 2D;
  *   - contornos del 50 % y 90 % con su rótulo, borde de la zona y regla en km.
- * El terreno los recibe como texturas (ver Terreno.tsx). Estilo: docs/estilo_mapa.md.
+ * El terreno los recibe como texturas (ver Terreno.tsx). Estilo: docs/es/estilo_mapa.md.
  */
 import { CELDA_M, N } from "@/lib/constants";
 import type { Contorno } from "@/lib/mapa/contornos";
@@ -23,7 +23,8 @@ export function pintarProbabilidad(ctx: CanvasRenderingContext2D, prob: Float32A
 
 const COLOR: Record<number, string> = { 0.5: ESTILO.contorno50, 0.9: ESTILO.ambar };
 
-export function pintarSuperposicion(ctx: CanvasRenderingContext2D, contornos: Contorno[]) {
+/** `porcentaje` da el texto de los rótulos (50 → «50 %» en español, "50%" en inglés). */
+export function pintarSuperposicion(ctx: CanvasRenderingContext2D, contornos: Contorno[], porcentaje: (n: number) => string) {
   const s = LADO_SUPER / N; // px por celda
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, LADO_SUPER, LADO_SUPER);
@@ -53,7 +54,7 @@ export function pintarSuperposicion(ctx: CanvasRenderingContext2D, contornos: Co
     if (!c.etiqueta || c.radio < 4) continue;
     const x = c.etiqueta.x * s + 10;
     const y = c.etiqueta.y * s - 10;
-    const texto = `${Math.round(c.umbral * 100)} %`;
+    const texto = porcentaje(Math.round(c.umbral * 100));
     ctx.lineWidth = 8;
     ctx.strokeStyle = "rgba(4,8,20,0.8)";
     ctx.strokeText(texto, x, y);

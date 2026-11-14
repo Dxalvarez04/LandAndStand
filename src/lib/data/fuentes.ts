@@ -1,7 +1,7 @@
 /**
  * Fuentes oficiales de lo que muestra el mapa. Los créditos son los que exige la especificación (§12)
  * y los datos de cada producto salen de su ficha oficial (lista de Katrina, comprobada el 14/11/2026).
- * Ver docs/fuentes.md.
+ * Ver docs/es/fuentes.md.
  */
 
 export interface FuenteOficial {
@@ -19,6 +19,8 @@ export interface FuenteOficial {
   url: string;
   /** Texto del enlace */
   sitio: string;
+  /** Textos en inglés */
+  en?: Partial<Pick<FuenteOficial, "uso" | "producto" | "autoria" | "detalle" | "credito">>;
 }
 
 export const FUENTES: FuenteOficial[] = [
@@ -32,6 +34,12 @@ export const FUENTES: FuenteOficial[] = [
     credito: "USGS Astrogeology, MSL Gale Merged DEM 1 m v3 (Calef y Parker, 2016)",
     url: "https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m",
     sitio: "USGS Astropedia",
+     en: {
+      uso: "Terrain: slopes, distances and relief",
+      autoria: "Timothy Parker and Fred J. Calef III · USGS Astrogeology Science Center, 2016-10-20",
+      detalle: "1 m/px elevation model made by the MSL team to assess landing in Gale. It merges HRSC, CTX and HiRISE models adjusted to the MOLA altimeter. Here it is reduced to 32 m cells.",
+      credito: "USGS Astrogeology, MSL Gale Merged DEM 1 m v3 (Calef and Parker, 2016)",
+    },
   },
   {
     id: "imagen",
@@ -44,6 +52,12 @@ export const FUENTES: FuenteOficial[] = [
     credito: "HiRISE, NASA/JPL-Caltech/University of Arizona",
     url: "https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_orthophoto_mosaic_25cm",
     sitio: "USGS Astropedia",
+     en: {
+      uso: "Background image",
+      producto: "Gale HiRISE color mosaic (78 quads, 25 cm)",
+      autoria: "USGS Astrogeology Science Center, July 2025 · merged with the MSL Gale Merged Orthophoto Mosaic 25cm (Calef and Parker, 2016)",
+      detalle: "HiRISE color strips (Mars Reconnaissance Orbiter) georectified and merged with the mission's HiRISE orthomosaic, at 25 cm/px. Clipped to the study area with north up.",
+    },
   },
   {
     id: "posiciones",
@@ -55,6 +69,13 @@ export const FUENTES: FuenteOficial[] = [
     credito: "NASA/JPL-Caltech, archivo de posiciones de Curiosity",
     url: "https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json",
     sitio: "mars.nasa.gov · MSL_waypoints.json",
+     en: {
+      uso: "Positions of the landmarks T1–T6",
+      producto: "Curiosity stops (MSL waypoints)",
+      autoria: "NASA/JPL-Caltech · positions layer of the mission's MMGIS map",
+      detalle: "1,389 rover stops with sol, position and elevation, in the same projection as the map. They place the six sites Curiosity visited.",
+      credito: "NASA/JPL-Caltech, Curiosity positions archive",
+    },
   },
   {
     id: "fotos",
@@ -65,6 +86,13 @@ export const FUENTES: FuenteOficial[] = [
     credito: "NASA/JPL-Caltech/MSSS, con su número PIA",
     url: "https://photojournal.jpl.nasa.gov/",
     sitio: "NASA Photojournal",
+     en: {
+      uso: "What Curiosity saw at each landmark",
+      producto: "NASA Photojournal (one image per landmark, with its PIA number)",
+      autoria: "NASA/JPL-Caltech/MSSS · public-domain images",
+      detalle: "Mastcam mosaics and MAHLI self-portraits taken by Curiosity at each site.",
+      credito: "NASA/JPL-Caltech/MSSS, with its PIA number",
+    },
   },
   {
     id: "globo",
@@ -76,6 +104,13 @@ export const FUENTES: FuenteOficial[] = [
     credito: "NASA/JPL/USGS, Viking MDIM 2.1 en color",
     url: "https://astrogeology.usgs.gov/search/map/mars_viking_colorized_global_mosaic_232m",
     sitio: "USGS Astropedia",
+     en: {
+      uso: "Mars globe: color",
+      producto: "Mars Viking Colorized Global Mosaic 232m (MDIM 2.1 colorized)",
+      autoria: "NASA Ames · USGS Astrogeology Science Center, 2009-02-02",
+      detalle: "Global mosaic from the Viking orbiters, colorized version of the controlled MDIM 2.1. Used reduced (4K and 8K) for the globe and, at more detail, for the Gale region. Read from the USGS map service.",
+      credito: "NASA/JPL/USGS, Viking MDIM 2.1 colorized",
+    },
   },
   {
     id: "relieveGlobo",
@@ -87,6 +122,10 @@ export const FUENTES: FuenteOficial[] = [
     credito: "MOLA Science Team, NASA/GSFC · USGS Astrogeology",
     url: "https://astrogeology.usgs.gov/search/map/mars_mgs_mola_dem_463m",
     sitio: "USGS Astropedia",
+     en: {
+      uso: "Mars globe: relief (shading)",
+      detalle: "Global topography from the MOLA laser altimeter (Smith et al., 2001). It only provides the globe's shading, exaggerated so it reads at that scale; it is not used in any computation.",
+    },
   },
   {
     id: "relieveGale",
@@ -98,6 +137,11 @@ export const FUENTES: FuenteOficial[] = [
     credito: "USGS Astrogeology, HRSC-MOLA Blended DEM 200 m v2 (Fergason et al., 2017)",
     url: "https://astrogeology.usgs.gov/search/map/mars_mgs_mola_mex_hrsc_blended_dem_global_200m",
     sitio: "USGS Astropedia",
+     en: {
+      uso: "Gale region in relief on the globe",
+      autoria: "DLR, NASA, Goddard Space Flight Center · USGS Astrogeology Science Center, 2018-01-31 (Fergason, Laura and Hare, 2017)",
+      detalle: "Global model combining MOLA with HRSC stereo (Mars Express) at 200 m/px. It gives the relief of the crater and Mount Sharp during the descent, exaggerated ×3; it is not used in any computation.",
+    },
   },
 ];
 
@@ -107,4 +151,10 @@ export const ZONA = {
   tamano: "3,52 × 3,52 km · 110 × 110 celdas de 32 m",
   proyeccion: "Equirectangular de Marte, meridiano central 0°, esfera de radio 3 396 190 m",
   limites: "x de 8141,0 a 8144,52 km · y de −282,0 a −278,48 km",
+  en: {
+    lugar: "Gale crater, Mars · lower Mount Sharp",
+    tamano: "3.52 × 3.52 km · 110 × 110 cells of 32 m",
+    proyeccion: "Mars equirectangular, central meridian 0°, sphere of radius 3,396,190 m",
+    limites: "x from 8141.0 to 8144.52 km · y from −282.0 to −278.48 km",
+  },
 };

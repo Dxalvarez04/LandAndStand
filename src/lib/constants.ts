@@ -1,4 +1,4 @@
-/** Constantes de la especificación (docs/especificacion_algoritmos.md). */
+/** Constantes de la especificación (docs/es/especificacion_algoritmos.md). */
 
 // ---- Malla (sección 1) ----
 export const N = 110; // filas = columnas

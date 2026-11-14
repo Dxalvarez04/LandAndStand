@@ -35,6 +35,7 @@ import BarraProgreso from "@/components/panel/BarraProgreso";
 import { PERFILES_ASTRONAUTAS } from "@/lib/data/perfiles";
 import { DESTINOS_MISION, type DestinoMision } from "@/lib/data/targets";
 import { DURACION_PANEL, PESTANA_PX } from "@/lib/panel";
+import { useIdioma } from "@/lib/i18n";
 import { jost, plexMono } from "@/components/mapa/fuente";
 
 type PuntoMapa = { fila: number; columna: number };
@@ -87,6 +88,11 @@ function esApaisado() {
 }
 
 export default function Home() {
+  const { t, idioma } = useIdioma();
+  // El idioma del documento sigue al de la interfaz (lectores de pantalla, traductores, guiones)
+  useEffect(() => {
+    document.documentElement.lang = idioma;
+  }, [idioma]);
   const [estado, setEstado] = useState<Estado>(ESTADO_INICIAL);
   const [destinosMision, setDestinosMision] = useState<DestinoMision[]>(DESTINOS_MISION);
   const [seleccionandoDestino, setSeleccionandoDestino] = useState(false);
@@ -182,7 +188,7 @@ export default function Home() {
       }}
     >
       {/* ---- Zona 1 · Mapa (persona 2) ---- */}
-      <section aria-label="Mapa de alcance" className="absolute inset-0">
+      <section aria-label={t.mapaAria} className="absolute inset-0">
         <MapaMarte3D
           resultado={resultado}
           sol={estado.sol}
@@ -218,8 +224,8 @@ export default function Home() {
             onClick={() => setPanelOculto((o) => !o)}
             aria-controls="panel-control"
             aria-expanded={panelVisible}
-            aria-label={panelVisible ? "Esconder el panel" : "Mostrar el panel"}
-            title={panelVisible ? "Esconder el panel" : "Mostrar el panel"}
+            aria-label={panelVisible ? t.esconderPanel : t.mostrarPanel}
+            title={panelVisible ? t.esconderPanel : t.mostrarPanel}
             className="absolute -top-8 left-1/2 flex h-8 w-16 -translate-x-1/2 items-center justify-center rounded-t-md border border-b-0 border-[#a0beff]/15 bg-[#0a0f1f] text-[#b9c6e6] outline-none transition-colors hover:text-white focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-white/60 landscape:-left-8 landscape:top-1/2 landscape:h-16 landscape:w-8 landscape:translate-x-0 landscape:-translate-y-1/2 landscape:rounded-l-md landscape:rounded-tr-none landscape:border-b landscape:border-r-0"
           >
             <svg
@@ -241,7 +247,7 @@ export default function Home() {
         <aside
           ref={panelRef}
           id="panel-control"
-          aria-label="Panel de control"
+          aria-label={t.panelAria}
           aria-hidden={!panelVisible}
           inert={!panelVisible}
           className="relative h-full w-full overflow-hidden border-t border-[#a0beff]/15 bg-[#0a0f1f] text-[#eaf0ff] shadow-[0_0_40px_-12px_rgba(0,0,0,0.85)] landscape:border-l landscape:border-t-0"

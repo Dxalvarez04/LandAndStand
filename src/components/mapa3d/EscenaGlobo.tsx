@@ -31,6 +31,7 @@ import { R_MARTE } from "@/lib/constants";
 import { cargarAlturasGale, type AlturasGale } from "@/lib/mapa3d/alturas";
 import { GALE, latLonAVector, ZONA } from "@/lib/mapa3d/coordenadas";
 import { ajustarCamara, ponerSRGB } from "@/lib/mapa3d/imperativo";
+import { useIdioma } from "@/lib/i18n";
 
 const COLOR_DIA = new Color("#d6a27c");
 /** Línea guía del rótulo de Gale (px): sube desde el punto y dobla hacia el nombre */
@@ -192,6 +193,8 @@ interface Props {
 
 export default function EscenaGlobo({ descendiendo, hd, reducido, onLlegada, onIrAGale, mostrarMarca }: Props) {
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
+  // Los textos se calculan aquí: el contenido de <Html> vive en otra raíz de React
+  const { t } = useIdioma();
   const [color4k, normal, galeColor] = useTexture(["/data/3d/marte_4k.jpg", "/data/3d/marte_normal_2k.jpg", "/data/3d/gale_color.jpg"]);
   const [color8k, setColor8k] = useState<Texture | null>(null);
   const [gale, setGale] = useState<AlturasGale | null>(null);
@@ -353,10 +356,10 @@ export default function EscenaGlobo({ descendiendo, hd, reducido, onLlegada, onI
               style={{ left: LINEA.ancho + 4, top: -LINEA.alto }}
             >
               <span className="block text-[17px] font-medium text-white group-hover:underline group-hover:decoration-white/60 group-hover:underline-offset-4">
-                Cráter Gale
+                {t.craterGale}
               </span>
               <span className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-[#e6d8cc]">
-                Entrar a la zona de estudio
+                {t.entrarZona}
                 <svg width="9" height="9" viewBox="0 0 9 9" aria-hidden className="transition-transform group-hover:translate-x-0.5">
                   <path d="M3 1.5 6 4.5 3 7.5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>

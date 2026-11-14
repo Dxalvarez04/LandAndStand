@@ -17,7 +17,7 @@ import type { IdDestino } from "@/lib/contract";
 import { DESTINOS, HABITAT } from "@/lib/data/targets";
 import { CELDA_KM, X0, Y0 } from "@/lib/constants";
 import { ESTILO } from "@/lib/mapa/estilo";
-import { pct } from "@/lib/mapa/textos";
+import { enIdioma, useIdioma } from "@/lib/i18n";
 import { alturaEn, type Alturas } from "@/lib/mapa3d/alturas";
 import { aEscena, celdaAProyectadas } from "@/lib/mapa3d/coordenadas";
 import type { Celda } from "@/lib/mapa/geo";
@@ -33,6 +33,8 @@ const Z_ETIQUETAS: [number, number] = [20, 10]; // por debajo de la ficha (z-30)
  * misión que no aparecen van a la derecha.
  */
 const LADO: Record<string, "izq" | "der" | "abajo"> = { T1: "abajo", T2: "izq", T3: "izq", T4: "izq", T5: "der", T6: "der", M3: "izq" };
+/** En pantallas estrechas las referencias no llevan texto: solo hay que separar M2 y M3. */
+const LADO_COMPACTO: Record<string, "izq" | "der" | "abajo"> = { M3: "abajo" };
 const MEDIO_PUNTO = 11; // px desde el borde de la etiqueta hasta el centro del punto (padding + radio)
 const MEDIO_ALTO = 13; // px desde arriba hasta el centro del punto en las etiquetas «abajo»
 const TRANSFORMA = {
@@ -41,6 +43,8 @@ const TRANSFORMA = {
   abajo: `translate(-50%, -${MEDIO_ALTO}px)`,
 };
 const DISPOSICION = { izq: "flex-row-reverse", der: "", abajo: "flex-col gap-0.5" };
+
+const ladoPropio = (id: string, compacto: boolean) => (compacto ? LADO_COMPACTO[id] : LADO[id]) ?? "der";
 
 function posicion(a: Alturas, zRef: number, northKm: number, eastKm: number) {
   const este = X0 + eastKm * 1000;
@@ -133,9 +137,11 @@ function Sitios3D({
   compacto,
   visibles,
 }: Props) {
+  // Los textos se calculan aquí: el contenido de <Html> vive en otra raíz de React
+  const { t, pct, idioma } = useIdioma();
   const sitios = useMemo(
-    () => DESTINOS.map((d) => ({ ...d, ...posicion(alturas, zRef, d.northKm, d.eastKm) })),
-    [alturas, zRef],
+    () => DESTINOS.map((d) => ({ ...enIdioma(d, idioma), ...posicion(alturas, zRef, d.northKm, d.eastKm) })),
+    [alturas, zRef, idioma],
   );
   const h = useMemo(() => posicion(alturas, zRef, HABITAT.northKm, HABITAT.eastKm), [alturas, zRef]);
   const suyos = useMemo(
@@ -151,7 +157,7 @@ function Sitios3D({
       <Line points={[[h.x, h.y, h.z], [h.x, h.y + POSTE, h.z]]} color="#ffffff" lineWidth={1.2} transparent opacity={0.85} />
       <Html position={[h.x, h.y + POSTE, h.z]} center zIndexRange={Z_ETIQUETAS} style={{ pointerEvents: "none" }}>
         <div className={`flex flex-col items-center ${SOMBRA}`} style={aparecer(visibles)}>
-          <span className="mb-0.5 whitespace-nowrap text-[13px] font-medium text-white">Hábitat</span>
+          <span className="mb-0.5 whitespace-nowrap text-[13px] font-medium text-white">{t.habitat}</span>
           <svg width="16" height="14" viewBox="0 0 16 14" aria-hidden className="[filter:drop-shadow(0_0_2px_rgba(6,10,23,1))]">
             <path d="M8 1 L15 13 L1 13 Z" fill="#ffffff" stroke="#060a17" strokeWidth="1.5" strokeLinejoin="round" />
           </svg>
@@ -174,15 +180,18 @@ function Sitios3D({
                   e.stopPropagation();
                   onElegir(s.id);
                 }}
-                aria-label={`Punto de referencia ${s.nombre}: ${p !== undefined ? pct(p) : "sin resultado"}`}
-                style={aparecer(visibles, TRANSFORMA[LADO[s.id]])}
-                className={`group flex items-center gap-1.5 whitespace-nowrap rounded-[3px] px-1.5 py-1 outline-none focus-visible:ring-1 focus-visible:ring-white/70 ${DISPOSICION[LADO[s.id]]} ${SOMBRA}`}
+                aria-label={`${t.referencia} ${s.nombre}: ${p !== undefined ? pct(p) : t.sinResultado}`}
+                style={aparecer(visibles, compacto ? "translate(-50%, -50%)" : TRANSFORMA[LADO[s.id]])}
+                className={`group flex items-center gap-1.5 whitespace-nowrap rounded-[3px] outline-none focus-visible:ring-1 focus-visible:ring-white/70 ${compacto ? "p-2.5" : `px-1.5 py-1 ${DISPOSICION[LADO[s.id]]}`} ${SOMBRA}`}
               >
                 <MarcaReferencia activo={sel} />
-                <span className="flex items-baseline gap-1.5">
-                  <span className="text-[13px] text-[#d9dfee] group-hover:underline">{compacto ? s.id : s.nombre}</span>
-                  {p !== undefined && <span className={`${CIFRA} text-[12px] text-[#b9c6e6]`}>{pct(p)}</span>}
-                </span>
+                {/* En pantallas estrechas, solo el anillo: el nombre y la foto salen al tocarlo */}
+                {!compacto && (
+                  <span className="flex items-baseline gap-1.5">
+                    <span className="text-[13px] text-[#d9dfee] group-hover:underline">{s.nombre}</span>
+                    {p !== undefined && <span className={`${CIFRA} text-[12px] text-[#b9c6e6]`}>{pct(p)}</span>}
+                  </span>
+                )}
               </button>
             </Html>
           </group>
@@ -211,9 +220,9 @@ function Sitios3D({
                   e.stopPropagation();
                   onElegirPropio(s.id);
                 }}
-                aria-label={`${s.id} ${s.nombre}: ${p !== undefined ? pct(p) : "sin resultado"}`}
-                style={aparecer(visibles, TRANSFORMA[LADO[s.id] ?? "der"])}
-                className={`group flex items-center gap-1.5 whitespace-nowrap rounded-[3px] px-1 py-1 outline-none focus-visible:ring-1 focus-visible:ring-white/70 ${DISPOSICION[LADO[s.id] ?? "der"]} ${SOMBRA}`}
+                aria-label={`${s.id} ${s.nombre}: ${p !== undefined ? pct(p) : t.sinResultado}`}
+                style={aparecer(visibles, TRANSFORMA[ladoPropio(s.id, compacto)])}
+                className={`group flex items-center gap-1.5 whitespace-nowrap rounded-[3px] px-1 py-1 outline-none focus-visible:ring-1 focus-visible:ring-white/70 ${DISPOSICION[ladoPropio(s.id, compacto)]} ${SOMBRA}`}
               >
                 {s.propuesto ? <Punto relleno={alcance ? "#ffcf70" : "#ffffff"} sel={sel} /> : <Rombo relleno={alcance ? "#ffcf70" : "#ffffff"} sel={sel} />}
                 <span className="flex items-baseline gap-1.5">
@@ -249,10 +258,10 @@ function Sitios3D({
               <Rombo relleno="#ff8fd8" sel={false} hueco />
               <span className="leading-tight">
                 <span className="flex items-baseline gap-1.5">
-                  <span className="text-[13.5px] font-medium text-[#ff8fd8]">Destino nuevo</span>
+                  <span className="text-[13.5px] font-medium text-[#ff8fd8]">{t.destinoNuevo}</span>
                   {pNuevo !== undefined && <span className={`${CIFRA} text-[12.5px] text-white`}>{pct(pNuevo)}</span>}
                 </span>
-                <span className="block text-[11.5px] text-[#d9dfee]">Ponle nombre en el panel</span>
+                <span className="block text-[11.5px] text-[#d9dfee]">{t.ponleNombre}</span>
               </span>
             </div>
           </Html>

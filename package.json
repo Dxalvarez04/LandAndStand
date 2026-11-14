@@ -1,6 +1,12 @@
 {
   "name": "land-and-stand",
   "version": "0.1.0",
+  "description": "El mapa de Marte según el cuerpo que lo pisa: probabilidad de ir y volver a pie en el cráter Gale, sol a sol (NASA Space Apps Challenge 2026)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/raaulalonso/LandAndStand.git"
+  },
+  "homepage": "https://github.com/raaulalonso/LandAndStand#readme",
   "private": true,
   "scripts": {
     "dev": "next dev",

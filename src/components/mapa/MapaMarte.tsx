@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PERSONA 2 · El mapa completo, autocontenido. Ver docs/estilo_mapa.md.
+ * PERSONA 2 · El mapa completo, autocontenido. Ver docs/es/estilo_mapa.md.
  *
  * Ocupa todo su contenedor (pantalla fija de la nave, sin scroll). El área de estudio (3,52 km,
  * cuadrada) se centra en la ventana. Cada esquina tiene una función fija:
@@ -30,7 +30,7 @@ import { calcularContornos } from "@/lib/mapa/contornos";
 import { acotar, CELDA_HABITAT, type Celda, celdaAMundo, indice, mundoACelda, type Punto } from "@/lib/mapa/geo";
 import { MARGEN_CTX, RUTA_CONTEXTO, RUTA_RELIEVE } from "@/lib/mapa/contexto";
 import { perfilRuta } from "@/lib/mapa/perfil";
-import { TEXTOS } from "@/lib/mapa/textos";
+import { enIdioma, useIdioma } from "@/lib/i18n";
 import CapaContornos, { EtiquetasContornos } from "./CapaContornos";
 import CapaFondo from "./CapaFondo";
 import CapaProbabilidad from "./CapaProbabilidad";
@@ -116,6 +116,7 @@ export default function MapaMarte({
   const zoomRef = useRef<ZoomBehavior<HTMLDivElement, unknown> | null>(null);
   const [vista, setVista] = useState({ w: 0, h: 0 }); // ventana del mapa, en px
   const [t, setT] = useState<ZoomTransform>(zoomIdentity);
+  const { t: textos, idioma } = useIdioma();
   const [hover, setHover] = useState<{ celda: Celda; x: number; y: number } | null>(null);
   const [sel, setSel] = useState<Seleccion | null>(null);
   const [fotoAbierta, setFotoAbierta] = useState<IdDestino | null>(null);
@@ -294,13 +295,13 @@ export default function MapaMarte({
   };
 
   // ---- Textos de estado ----
-  const probables = resultado ? resultado.destinos.filter((d) => d.p >= 0.5).length : 0;
+  const probables = resultado ? destinosMision.filter((d) => resultado.prob[d.fila * N + d.columna] >= 0.5).length : 0;
   // Mientras calcula se mantiene el resultado anterior: el resumen no anuncia el sol nuevo con cifras viejas
   const resumen = !resultado
-    ? "Mapa de alcance a pie, cargando."
+    ? textos.resumenCargando
     : calculando
-      ? "Mapa de alcance a pie, calculando el nuevo escenario."
-      : TEXTOS.resumen(sol, probables, DESTINOS.length);
+      ? textos.resumenCalculando
+      : textos.resumen(sol, probables, destinosMision.length);
 
   const posSel = sel ? aPantalla(celdaAMundo(sel.celda)) : null;
   const hoverP = hover ? probCelda(hover.celda) : undefined;
@@ -316,7 +317,7 @@ export default function MapaMarte({
         tabIndex={0}
         role="application"
         aria-roledescription="mapa"
-        aria-label={`${resumen} Flechas para moverse por el mapa, más y menos para el zoom, Escape para cerrar.`}
+        aria-label={`${resumen} ${textos.ayudaMapa2d}`}
         onClick={onClick}
         onPointerMove={onPointerMove}
         onPointerLeave={() => setHover(null)}
@@ -405,7 +406,10 @@ export default function MapaMarte({
                 vista={vista}
                 evitar={aPantalla(celdaAMundo(CELDA_HABITAT))}
                 destino={sel.destino}
-                personalizado={sel.propio ? (destinosMision.find((d) => d.id === sel.propio) ?? null) : null}
+                personalizado={(() => {
+                  const d = sel.propio ? destinosMision.find((x) => x.id === sel.propio) : undefined;
+                  return d ? enIdioma(d, idioma) : null;
+                })()}
                 p={sel.destino ? probDestino(sel.destino) : probCelda(sel.celda)}
                 ruta={ruta}
                 perfil={perfil}
@@ -414,8 +418,9 @@ export default function MapaMarte({
                 onAgregarDestino={
                   onAgregarDestino &&
                   (() => {
-                    const t = sel.destino ? DESTINOS.find((d) => d.id === sel.destino) : undefined;
-                    onAgregarDestino(sel.celda, t && { nombre: t.nombre, tareas: t.tareas });
+                    const r = sel.destino ? DESTINOS.find((d) => d.id === sel.destino) : undefined;
+                    const ri = r && enIdioma(r, idioma);
+                    onAgregarDestino(sel.celda, ri && { nombre: ri.nombre, tareas: ri.tareas });
                     setSel(null);
                   })
                 }
@@ -425,7 +430,7 @@ export default function MapaMarte({
 
             {pistaVisible && !sel && (
               <p className="pointer-events-none absolute left-3 top-3 z-20 max-w-[16rem] rounded-md bg-[#060a17]/90 px-3 py-2 text-[13px] leading-snug text-[#b9c6e6]">
-                {TEXTOS.pista}
+                {textos.pista2d}
               </p>
             )}
 

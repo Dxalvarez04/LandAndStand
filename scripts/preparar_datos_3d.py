@@ -1,4 +1,4 @@
-"""Genera los datos del mapa 3D desde fuentes oficiales del USGS (ver docs/fuentes.md).
+"""Genera los datos del mapa 3D desde fuentes oficiales del USGS (ver docs/es/fuentes.md).
 
 Salida en public/data/3d/:
 

@@ -48,7 +48,8 @@ import { cargarDem } from "@/lib/mapa/cargarDatos";
 import { RUTA_CONTEXTO } from "@/lib/mapa/contexto";
 import { perfilRuta } from "@/lib/mapa/perfil";
 import { acotar, CELDA_HABITAT, indice, type Celda } from "@/lib/mapa/geo";
-import { TEXTOS } from "@/lib/mapa/textos";
+import { enIdioma, useIdioma } from "@/lib/i18n";
+import SelectorIdioma from "@/components/SelectorIdioma";
 import { DESTINOS } from "@/lib/data/targets";
 import { FOTOS } from "@/lib/data/fotos";
 import { cargarAlturas, type Alturas } from "@/lib/mapa3d/alturas";
@@ -169,6 +170,7 @@ function Mapa3D({
 }: MapaMarteProps) {
   const movil = useSyncExternalStore(sinSuscripcion, esMovil, () => false);
   const reducido = useSyncExternalStore(sinSuscripcion, esReducido, () => false);
+  const { t, idioma, pctEntero } = useIdioma();
   const contRef = useRef<HTMLDivElement>(null);
   const [vistaPx, setVistaPx] = useState({ w: 0, h: 0 });
   const [vivo] = useState<Almacen<EstadoVivo>>(() => crearAlmacen(estadoVivoInicial()));
@@ -230,7 +232,7 @@ function Mapa3D({
   // Destinos de la misión en el mapa: propuestos (M1…) y añadidos por la tripulación (P1…)
   const propios = useMemo(
     () =>
-      destinosMision.map((d) => ({
+      destinosMision.map((original) => enIdioma(original, idioma)).map((d) => ({
         id: d.id,
         nombre: d.nombre,
         tareas: d.tareas,
@@ -238,7 +240,7 @@ function Mapa3D({
         propuesto: !!d.propuesto,
         celda: { fila: d.fila, columna: d.columna },
       })),
-    [destinosMision],
+    [destinosMision, idioma],
   );
   const probDestino = useCallback(
     (id: IdDestino) => {
@@ -356,17 +358,17 @@ function Mapa3D({
   };
 
   // ---- Textos ----
-  const probables = resultado ? resultado.destinos.filter((d) => d.p >= 0.5).length : 0;
-  const resumen = !resultado
-    ? "Mapa de alcance a pie, cargando."
-    : calculando
-      ? "Mapa de alcance a pie, calculando el nuevo escenario."
-      : TEXTOS.resumen(sol, probables, DESTINOS.length);
+  const probables = resultado ? propios.filter((d) => resultado.prob[indice(d.celda)] >= 0.5).length : 0;
+  const resumen = !resultado ? t.resumenCargando : calculando ? t.resumenCalculando : t.resumen(sol, probables, propios.length);
 
   // Parte visible del mapa (la que no tapa el panel)
   const visible = { w: Math.max(0, vistaPx.w - hueco.der), h: Math.max(0, vistaPx.h - hueco.abajo) };
   const estrecho = visible.w < ESTRECHO;
   const nombreFoto = fotoAbierta ? (DESTINOS.find((d) => d.id === fotoAbierta)?.nombre ?? "") : "";
+  const referenciaEnIdioma = (id: IdDestino) => {
+    const r = DESTINOS.find((d) => d.id === id);
+    return r && enIdioma(r, idioma);
+  };
   const post = !movil;
   // Si el panel borra el destino abierto, la ficha queda como un punto normal
   const propioAbierto = sel?.propio ? (propios.find((d) => d.id === sel.propio) ?? null) : null;
@@ -380,8 +382,8 @@ function Mapa3D({
         ref={contRef}
         tabIndex={0}
         role="application"
-        aria-roledescription="mapa 3D"
-        aria-label={`${resumen} Arrastra para moverte; botón derecho, Mayús + arrastrar o dos dedos para girar; rueda o pellizco para el zoom. Flechas para moverte por la malla, C para la vista cenital.`}
+        aria-roledescription={t.rolMapa3d}
+        aria-label={`${resumen} ${t.ayudaMapa3d}`}
         onKeyDown={onKeyDown}
         className={`relative min-h-0 flex-1 select-none overflow-hidden outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[#eaf0ff]/50 ${seleccionandoDestino && enTerreno ? "cursor-crosshair" : ""}`}
         style={{ touchAction: "none" }}
@@ -455,15 +457,15 @@ function Mapa3D({
                     <circle r="1.4" fill="#ff8fd8" />
                   </svg>
                   <p className="min-w-0 text-[13.5px] leading-snug">
-                    Toca el punto del destino nuevo
-                    <span className="block text-[12px] text-[#8d9cc2]">Verás su probabilidad al pasar por encima</span>
+                    {t.elegirPunto}
+                    <span className="block text-[12px] text-[#8d9cc2]">{t.elegirPuntoAyuda}</span>
                   </p>
                   <button
                     type="button"
                     onClick={onCancelarSeleccionDestino}
                     className="h-11 shrink-0 rounded px-3 text-[13px] text-[#b9c6e6] outline-none transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:ring-1 focus-visible:ring-white/60"
                   >
-                    Cancelar
+                    {t.cancelar}
                   </button>
                 </div>
               )}
@@ -472,19 +474,19 @@ function Mapa3D({
                 <button
                   type="button"
                   onClick={volverAlGlobo}
-                  aria-label="Volver al globo de Marte"
-                  title="Volver al globo de Marte"
+                  aria-label={t.volverGlobo}
+                  title={t.volverGlobo}
                   className="pointer-events-auto absolute left-3 top-3 z-20 flex h-11 items-center gap-2 rounded-md bg-[#060a17]/90 pl-3 pr-4 text-[14px] text-[#eaf0ff] outline-none transition-colors hover:bg-[#0b1226] focus-visible:ring-1 focus-visible:ring-white/60 [@media(max-width:560px)]:w-11 [@media(max-width:560px)]:justify-center [@media(max-width:560px)]:px-0"
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                     <path d="M10 3 5 8l5 5" />
                   </svg>
-                  <span className="[@media(max-width:560px)]:hidden">Globo de Marte</span>
+                  <span className="[@media(max-width:560px)]:hidden">{t.globoMarte}</span>
                 </button>
               )}
               {!pistaVistaAntes && !pistaOcultada && !sel && !seleccionandoDestino && (
                 <p className="pointer-events-none absolute left-3 top-[4.25rem] z-20 max-w-[16rem] rounded-md bg-[#060a17]/90 px-3 py-2 text-[13px] leading-snug text-[#b9c6e6]">
-                  Toca el terreno o un destino para saber si puedes ir y volver
+                  {t.pista3d}
                 </p>
               )}
               <Controles3D
@@ -514,8 +516,8 @@ function Mapa3D({
                       onAgregarDestino &&
                       (() => {
                         // En un punto de referencia se sugieren su nombre y lo que se estudió allí
-                        const t = sel.destino ? DESTINOS.find((d) => d.id === sel.destino) : undefined;
-                        onAgregarDestino(sel.celda, t && { nombre: t.nombre, tareas: t.tareas });
+                        const r = sel.destino ? referenciaEnIdioma(sel.destino) : undefined;
+                        onAgregarDestino(sel.celda, r && { nombre: r.nombre, tareas: r.tareas });
                         setSel(null);
                       }),
                   }
@@ -526,18 +528,21 @@ function Mapa3D({
 
           {/* ---- Interfaz del globo ---- */}
           {!enTerreno && !cargaInicial && (
-            <Brujula azimut={0} mPorPx={null} onFuentes={() => setFuentesAbiertas(true)} textoFuentes="USGS (Viking, MOLA)" />
+            <>
+              <SelectorIdioma className="pointer-events-auto absolute right-3 top-3 z-20" />
+              <Brujula azimut={0} mPorPx={null} onFuentes={() => setFuentesAbiertas(true)} textoFuentes={t.textoFuentesGlobo} />
+            </>
           )}
         </div>
 
         {/* Carga inicial */}
         {cargaInicial && (
           <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-black">
-            <p className="text-[15px] text-[#eaf0ff]">Cargando Marte</p>
+            <p className="text-[15px] text-[#eaf0ff]">{t.cargandoMarte}</p>
             <div className="h-[3px] w-48 overflow-hidden rounded bg-white/10">
               <div className="h-full bg-[#eaf0ff] transition-[width] duration-200" style={{ width: `${Math.round(progress)}%` }} />
             </div>
-            <p className={`${CIFRA} text-[12px] text-[#8d9cc2]`}>{Math.round(progress)} %</p>
+            <p className={`${CIFRA} text-[12px] text-[#8d9cc2]`}>{pctEntero(Math.round(progress))}</p>
           </div>
         )}
 
@@ -614,6 +619,7 @@ function CapaViva({
   onFuentes: () => void;
   ficha: DatosFicha | null;
 }) {
+  const { t } = useIdioma();
   const ancla = useAlmacen(vivo, (v) => v.ancla);
   const habPx = useAlmacen(vivo, (v) => v.habPx);
   const rutaPx = useAlmacen(vivo, (v) => v.rutaPx);
@@ -648,7 +654,7 @@ function CapaViva({
       {esquinas && (
         <>
           <Clave />
-          <Brujula azimut={azimut} mPorPx={cenital ? mPorPx : null} onFuentes={onFuentes} textoFuentes="USGS · NASA/JPL-Caltech" />
+          <Brujula azimut={azimut} mPorPx={cenital ? mPorPx : null} onFuentes={onFuentes} textoFuentes={t.textoFuentes3d} />
         </>
       )}
     </>

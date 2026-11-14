@@ -1,4 +1,4 @@
-"""Genera los datos del mapa y del cálculo desde las fuentes oficiales (ver docs/fuentes.md).
+"""Genera los datos del mapa y del cálculo desde las fuentes oficiales (ver docs/es/fuentes.md).
 
 Lee por HTTP solo la ventana de estudio, sin descargar los mosaicos enteros:
 

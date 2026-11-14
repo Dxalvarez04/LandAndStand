@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import type { Resultado } from "@/lib/contract";
 import { N } from "@/lib/constants";
 import { distanciaDesdeHabitatKm, desnivelDesdeHabitatM, type DestinoMision } from "@/lib/data/targets";
-import { AMBAR, BORDE, Chevron, CIFRA, MarcaDestino, num, Seccion, TEXTO } from "./comun";
+import { enIdioma, useIdioma } from "@/lib/i18n";
+import { AMBAR, BORDE, Chevron, CIFRA, MarcaDestino, Seccion, TEXTO } from "./comun";
 
 interface Props {
   resultado: Resultado | null;
@@ -25,7 +26,6 @@ interface Props {
 /** Columnas: destino · distancia · desnivel · probabilidad · flecha */
 const COLUMNAS = "grid grid-cols-[minmax(0,1fr)_3.9rem_3.7rem_3.3rem_0.75rem] items-center gap-x-2";
 
-const pct = (p: number) => `${Math.round(p * 100)} %`;
 const desnivel = (m: number | null) => (m === null ? "—" : `${m > 0 ? "+" : m < 0 ? "−" : ""}${Math.abs(m)} m`);
 
 /**
@@ -48,6 +48,7 @@ export default function TablaDestinos({
   onEnfocar,
 }: Props) {
   const [abierto, setAbierto] = useState<string | null>(null);
+  const { t, idioma } = useIdioma();
   const alternar = (id: string) => {
     if (abierto !== id) onEnfocar?.(id);
     setAbierto(abierto === id ? null : id);
@@ -56,20 +57,20 @@ export default function TablaDestinos({
   return (
     <Seccion
       id="titulo-destinos"
-      titulo="Destinos de la misión"
-      valor={<span className={`text-[12px] ${TEXTO.terciario}`}>Toca uno para verlo en el mapa</span>}
+      titulo={t.destinosTitulo}
+      valor={<span className={`text-[12px] ${TEXTO.terciario}`}>{t.destinosAyuda}</span>}
     >
       {/* Cabecera de columnas */}
       <div className={`${COLUMNAS} px-2 pb-1 text-[11.5px] ${TEXTO.terciario}`} aria-hidden>
-        <span>Destino</span>
-        <span className="text-right">Distancia</span>
-        <span className="text-right">Desnivel</span>
-        <span className="text-right">Ir y volver</span>
+        <span>{t.colDestino}</span>
+        <span className="text-right">{t.colDistancia}</span>
+        <span className="text-right">{t.colDesnivel}</span>
+        <span className="text-right">{t.colIrVolver}</span>
         <span />
       </div>
 
       <ul className={`divide-y divide-[#a0beff]/[0.1] border-y ${BORDE}`}>
-        {destinosMision.map((d) => (
+        {destinosMision.map((original) => enIdioma(original, idioma)).map((d) => (
           <FilaDestino
             key={d.id}
             etiqueta={d.id}
@@ -77,7 +78,7 @@ export default function TablaDestinos({
             distanciaKm={distanciaDesdeHabitatKm(d.fila, d.columna)}
             desnivelM={desnivelDesdeHabitatM(resultado, d.fila, d.columna)}
             probabilidad={resultado?.prob[d.fila * N + d.columna]}
-            contexto={d.contexto ?? `Destino añadido por la tripulación · celda ${d.fila}, ${d.columna}`}
+            contexto={d.contexto ?? t.contextoAnadido(d.fila, d.columna)}
             tareas={d.tareas}
             personalizado={!d.propuesto}
             abierto={abierto === d.id}
@@ -86,7 +87,7 @@ export default function TablaDestinos({
           />
         ))}
         {destinosMision.length === 0 && (
-          <li className={`px-2 py-3 text-[12.5px] ${TEXTO.terciario}`}>Sin destinos. Añade uno en el mapa.</li>
+          <li className={`px-2 py-3 text-[12.5px] ${TEXTO.terciario}`}>{t.sinDestinos}</li>
         )}
       </ul>
 
@@ -95,15 +96,15 @@ export default function TablaDestinos({
         {seleccionando ? (
           <div className={`flex items-center gap-3 rounded-[3px] border ${BORDE} border-l-2 border-l-[#ff8fd8] bg-[#060a17] py-1 pl-3 pr-1`} role="status">
             <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#eaf0ff]">
-              Toca el punto en el mapa
-              <span className={`block text-[12px] ${TEXTO.terciario}`}>Al pasar por encima verás su probabilidad</span>
+              {t.tocaPuntoMapa}
+              <span className={`block text-[12px] ${TEXTO.terciario}`}>{t.tocaPuntoAyuda}</span>
             </p>
             <button
               type="button"
               onClick={onCancelarSeleccion}
               className={`h-10 shrink-0 rounded-[3px] px-3 text-[13px] ${TEXTO.secundario} outline-none transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:ring-1 focus-visible:ring-white/60`}
             >
-              Cancelar
+              {t.cancelar}
             </button>
           </div>
         ) : puntoSeleccionado ? (
@@ -126,7 +127,7 @@ export default function TablaDestinos({
               <path d="M0 -6v3.4M0 2.6V6M-6 0h3.4M2.6 0H6" stroke="#ff8fd8" strokeWidth="1.5" strokeLinecap="round" />
               <circle r="1.2" fill="#ff8fd8" />
             </svg>
-            Añadir destino en el mapa
+            {t.anadirEnMapa}
           </button>
         )}
       </div>
@@ -161,9 +162,10 @@ function FilaDestino({
   onToggle,
   onEliminar,
 }: FilaDestinoProps) {
+  const { t, pct, num } = useIdioma();
   const tieneProb = probabilidad !== undefined;
   const alcanzable = tieneProb && probabilidad >= 0.5;
-  const probTexto = tieneProb ? pct(probabilidad) : "sin calcular";
+  const probTexto = tieneProb ? pct(probabilidad) : t.sinCalcular;
 
   return (
     <li className={abierto ? "bg-[#060a17]" : ""}>
@@ -172,9 +174,7 @@ function FilaDestino({
         onClick={onToggle}
         aria-expanded={abierto}
         aria-controls={abierto ? `tareas-${etiqueta}` : undefined}
-        aria-label={`${etiqueta} ${nombre}: ${num(distanciaKm, 2)} km, desnivel ${desnivel(desnivelM)}, probabilidad de ir y volver ${probTexto}. ${
-          abierto ? "Ocultar tareas" : "Ver en el mapa y sus tareas"
-        }.`}
+        aria-label={t.filaDestino(etiqueta, nombre, num(distanciaKm, 2), desnivel(desnivelM), probTexto, abierto)}
         className={`${COLUMNAS} min-h-10 w-full px-2 py-1.5 text-left outline-none transition-colors hover:bg-white/[0.03] focus-visible:bg-white/[0.05]`}
       >
         <span className="flex min-w-0 items-center gap-2">
@@ -195,7 +195,7 @@ function FilaDestino({
       {abierto && (
         <div id={`tareas-${etiqueta}`} className="px-2 pb-3 pl-[2.6rem]">
           <p className={`text-[12.5px] leading-snug ${TEXTO.secundario}`}>{contexto}</p>
-          <p className={`mt-2 text-[12px] ${TEXTO.terciario}`}>Tareas previstas</p>
+          <p className={`mt-2 text-[12px] ${TEXTO.terciario}`}>{t.tareasPrevistas}</p>
           {tareas.length > 0 ? (
             <ul className="mt-1 space-y-1">
               {tareas.map((tarea, i) => (
@@ -206,7 +206,7 @@ function FilaDestino({
               ))}
             </ul>
           ) : (
-            <p className={`mt-1 text-[12.5px] ${TEXTO.terciario}`}>Sin tareas registradas.</p>
+            <p className={`mt-1 text-[12.5px] ${TEXTO.terciario}`}>{t.sinTareas}</p>
           )}
 
           {onEliminar && (
@@ -215,7 +215,7 @@ function FilaDestino({
               onClick={onEliminar}
               className={`-ml-2 mt-2 h-9 rounded-[3px] px-2 text-[12.5px] ${TEXTO.secundario} underline decoration-[#8d9cc2]/50 underline-offset-2 outline-none transition-colors hover:text-white focus-visible:ring-1 focus-visible:ring-white/60`}
             >
-              Quitar de la misión
+              {t.quitarMision}
             </button>
           )}
         </div>
@@ -240,6 +240,7 @@ function FormularioDestino({ fila, columna, sugerencia, resultado, onGuardar, on
   const [tareas, setTareas] = useState<string[]>(sugerencia?.tareas ?? []);
   const [nuevaTarea, setNuevaTarea] = useState("");
   const raiz = useRef<HTMLDivElement>(null);
+  const { t, pct, num } = useIdioma();
   const campoNombre = useRef<HTMLInputElement>(null);
 
   // Al aparecer (punto elegido en el mapa o «Añadir» desde la ficha) se ve y se escribe el nombre.
@@ -280,24 +281,22 @@ function FormularioDestino({ fila, columna, sugerencia, resultado, onGuardar, on
   return (
     <div ref={raiz} className={`scroll-my-3 rounded-[3px] border ${BORDE} border-l-2 border-l-[#ff8fd8] bg-[#060a17] p-3`}>
       <div className="flex items-baseline justify-between">
-        <p className="text-[13.5px] font-medium text-[#eaf0ff]">Destino nuevo</p>
-        <p className={`${CIFRA} text-[11.5px] ${TEXTO.terciario}`}>
-          celda {fila}, {columna}
-        </p>
+        <p className="text-[13.5px] font-medium text-[#eaf0ff]">{t.destinoNuevo}</p>
+        <p className={`${CIFRA} text-[11.5px] ${TEXTO.terciario}`}>{t.celda(fila, columna)}</p>
       </div>
 
       {/* Lo que dice el modelo de ese punto */}
       <dl className={`mt-2 grid grid-cols-3 divide-x divide-[#a0beff]/[0.12] border-y ${BORDE} py-1.5 text-center`}>
         <div>
-          <dt className={`text-[11.5px] ${TEXTO.terciario}`}>Distancia</dt>
+          <dt className={`text-[11.5px] ${TEXTO.terciario}`}>{t.colDistancia}</dt>
           <dd className={`${CIFRA} text-[13px] text-[#eaf0ff]`}>{num(distanciaKm, 2)} km</dd>
         </div>
         <div>
-          <dt className={`text-[11.5px] ${TEXTO.terciario}`}>Desnivel</dt>
+          <dt className={`text-[11.5px] ${TEXTO.terciario}`}>{t.colDesnivel}</dt>
           <dd className={`${CIFRA} text-[13px] text-[#eaf0ff]`}>{desnivel(desnivelM)}</dd>
         </div>
         <div>
-          <dt className={`text-[11.5px] ${TEXTO.terciario}`}>Ir y volver</dt>
+          <dt className={`text-[11.5px] ${TEXTO.terciario}`}>{t.colIrVolver}</dt>
           <dd className={`${CIFRA} text-[13px]`} style={{ color: alcanzable ? AMBAR : "#eaf0ff" }}>
             {probabilidad === undefined ? "—" : pct(probabilidad)}
           </dd>
@@ -305,7 +304,7 @@ function FormularioDestino({ fila, columna, sugerencia, resultado, onGuardar, on
       </dl>
 
       <label className="mt-3 block">
-        <span className={`text-[12px] ${TEXTO.terciario}`}>Nombre</span>
+        <span className={`text-[12px] ${TEXTO.terciario}`}>{t.nombre}</span>
         <input
           ref={campoNombre}
           type="text"
@@ -317,13 +316,13 @@ function FormularioDestino({ fila, columna, sugerencia, resultado, onGuardar, on
               guardar();
             }
           }}
-          placeholder="Nombre del destino"
+          placeholder={t.nombrePlaceholder}
           className={`${CAMPO} mt-1 h-10`}
         />
       </label>
 
       <div className="mt-3">
-        <p className={`text-[12px] ${TEXTO.terciario}`}>Tareas previstas</p>
+        <p className={`text-[12px] ${TEXTO.terciario}`}>{t.tareasPrevistas}</p>
         {tareas.length > 0 && (
           <ul className="mt-1 space-y-0.5">
             {tareas.map((tarea, i) => (
@@ -333,7 +332,7 @@ function FormularioDestino({ fila, columna, sugerencia, resultado, onGuardar, on
                 <button
                   type="button"
                   onClick={() => eliminarTarea(i)}
-                  aria-label={`Quitar tarea: ${tarea}`}
+                  aria-label={t.quitarTarea(tarea)}
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[3px] ${TEXTO.terciario} outline-none transition-colors hover:text-white focus-visible:ring-1 focus-visible:ring-white/60`}
                 >
                   <svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
@@ -355,14 +354,14 @@ function FormularioDestino({ fila, columna, sugerencia, resultado, onGuardar, on
                 agregarTarea();
               }
             }}
-            placeholder="Añadir tarea..."
+            placeholder={t.tareaPlaceholder}
             className={`${CAMPO} h-10 min-w-0 flex-1`}
           />
           <button
             type="button"
             onClick={agregarTarea}
             disabled={!nuevaTarea.trim()}
-            aria-label="Añadir tarea"
+            aria-label={t.anadirTarea}
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[3px] border ${BORDE} text-[#eaf0ff] outline-none transition-colors hover:bg-white/[0.06] focus-visible:border-[#eaf0ff]/60 disabled:cursor-not-allowed disabled:opacity-40`}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
@@ -379,14 +378,14 @@ function FormularioDestino({ fila, columna, sugerencia, resultado, onGuardar, on
           disabled={!nombre.trim()}
           className="h-10 flex-1 rounded-[3px] bg-[#eaf0ff] px-3 text-[13.5px] font-medium text-[#060a17] outline-none transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-[#ff8fd8]/70 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Guardar destino
+          {t.guardarDestino}
         </button>
         <button
           type="button"
           onClick={onCancelar}
           className={`h-10 rounded-[3px] border ${BORDE} px-3 text-[13.5px] ${TEXTO.secundario} outline-none transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:border-[#eaf0ff]/60`}
         >
-          Cancelar
+          {t.cancelar}
         </button>
       </div>
     </div>

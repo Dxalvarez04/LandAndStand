@@ -1,5 +1,5 @@
 /**
- * Tipografías del mapa (ver docs/estilo_mapa.md):
+ * Tipografías del mapa (ver docs/es/estilo_mapa.md):
  *  - Jost (versión libre de Futura) para nombres y textos.
  *  - IBM Plex Mono para cifras: porcentajes, distancias, coordenadas, escala.
  */

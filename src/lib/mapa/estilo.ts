@@ -1,5 +1,5 @@
 /**
- * Tokens del estilo «Apolo» (ver docs/estilo_mapa.md). Para SVG, canvas y estilos en línea.
+ * Tokens del estilo «Apolo» (ver docs/es/estilo_mapa.md). Para SVG, canvas y estilos en línea.
  * En los componentes se repiten como clases de Tailwind con los mismos valores.
  */
 export const ESTILO = {

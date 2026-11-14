@@ -7,10 +7,10 @@
  * (las referencias no lo usan: no son metas, solo orientan).
  */
 import type { IdDestino } from "@/lib/contract";
-import { DESTINOS, HABITAT, kmACelda, type DestinoMision } from "@/lib/data/targets";
+import { DESTINOS, kmACelda, type DestinoMision } from "@/lib/data/targets";
 import type { Celda } from "@/lib/mapa/geo";
 import { celdaAMundo, CELDA_HABITAT, type Punto } from "@/lib/mapa/geo";
-import { pct } from "@/lib/mapa/textos";
+import { enIdioma, useIdioma } from "@/lib/i18n";
 import { CIFRA } from "./fuente";
 
 /** Hacia dónde va la etiqueta de cada sitio para que no se pisen (T3–T6 están juntos). */
@@ -73,6 +73,7 @@ export default function CapaSitios({
   misionSel = null,
   onElegirMision,
 }: Props) {
+  const { t: textos, pct, idioma } = useIdioma();
   const h = aPantalla(celdaAMundo(CELDA_HABITAT));
   return (
     <div className="pointer-events-none absolute inset-0 z-[6]">
@@ -83,16 +84,16 @@ export default function CapaSitios({
             <path d="M8 1 L15 13 L1 13 Z" fill="#fff" stroke="#060a17" strokeWidth={1.5} strokeLinejoin="round" />
           </svg>
           <span className={`absolute whitespace-nowrap ${POS_ETIQUETA[LADO.H]} text-[13px] font-medium text-white ${SOMBRA}`}>
-            {HABITAT.nombre}
+            {textos.habitat}
           </span>
         </div>
       </div>
 
-      {DESTINOS.map((t) => {
+      {DESTINOS.map((original) => enIdioma(original, idioma)).map((t) => {
         const p = aPantalla(celdaAMundo(celdaDestino(t.id)));
         const prob = probDe(t.id);
         const activo = seleccionado === t.id;
-        const anchoEtiqueta = (compacto ? 3 : t.nombre.length) * 7.5 + 44; // aproximado
+        const anchoEtiqueta = t.nombre.length * 7.5 + 44; // aproximado
         const lado = ladoQueCabe(LADO[t.id], p.x, tam, anchoEtiqueta);
         return (
           <div key={t.id} className="absolute" style={{ left: p.x, top: p.y }}>
@@ -103,22 +104,25 @@ export default function CapaSitios({
                 e.stopPropagation();
                 onElegir(t.id);
               }}
-              aria-label={`${t.nombre}: ${prob !== undefined ? pct(prob) : "sin datos"}`}
+              aria-label={`${textos.referencia} ${t.nombre}: ${prob !== undefined ? pct(prob) : textos.sinDatos}`}
               aria-pressed={activo}
               className="pointer-events-auto relative flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full outline-none focus-visible:ring-1 focus-visible:ring-white/80"
             >
               <MarcaReferencia activo={activo} />
-              <span className={`absolute ${POS_ETIQUETA[lado]} flex items-baseline gap-1.5 whitespace-nowrap text-[12.5px] leading-tight text-[#d9dfee] ${SOMBRA}`}>
-                <span>{compacto ? t.id : t.nombre}</span>
-                <span className={`${CIFRA} text-[11.5px] text-[#b9c6e6]`}>{prob !== undefined ? pct(prob) : "—"}</span>
-              </span>
+              {/* En pantallas estrechas, solo el anillo: el nombre y la foto salen al tocarlo */}
+              {!compacto && (
+                <span className={`absolute ${POS_ETIQUETA[lado]} flex items-baseline gap-1.5 whitespace-nowrap text-[12.5px] leading-tight text-[#d9dfee] ${SOMBRA}`}>
+                  <span>{t.nombre}</span>
+                  <span className={`${CIFRA} text-[11.5px] text-[#b9c6e6]`}>{prob !== undefined ? pct(prob) : "—"}</span>
+                </span>
+              )}
             </button>
           </div>
         );
       })}
 
       {/* Destinos de la misión */}
-      {mision.map((d) => {
+      {mision.map((original) => enIdioma(original, idioma)).map((d) => {
         const p = aPantalla(celdaAMundo({ fila: d.fila, columna: d.columna }));
         const prob = probCelda?.({ fila: d.fila, columna: d.columna });
         const alcance = prob !== undefined && prob >= 0.5;
@@ -134,7 +138,7 @@ export default function CapaSitios({
                 e.stopPropagation();
                 onElegirMision?.(d.id);
               }}
-              aria-label={`${d.id} ${d.nombre}: ${prob !== undefined ? pct(prob) : "sin datos"}`}
+              aria-label={`${d.id} ${d.nombre}: ${prob !== undefined ? pct(prob) : textos.sinDatos}`}
               aria-pressed={activo}
               className="pointer-events-auto relative flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full outline-none focus-visible:ring-1 focus-visible:ring-white/80"
             >

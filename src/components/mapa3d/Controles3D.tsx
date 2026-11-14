@@ -4,11 +4,13 @@
  * Controles del mapa 3D (arriba a la derecha), mismo estilo que el 2D: bloques sólidos, 44 px.
  *   + / −              acercar y alejar
  *   3D | Cenital       vista oblicua o desde arriba con el norte arriba (como un plano)
+ *   ES | EN            idioma de la interfaz
  * El relieve se ve siempre a escala real.
  * «Volver al globo» va aparte, arriba a la izquierda. La tecla 0 vuelve a encuadrar la zona.
  * En pantallas estrechas (compacto) no hay + / − (se usa el pellizco).
  */
-import { TEXTOS } from "@/lib/mapa/textos";
+import { useIdioma } from "@/lib/i18n";
+import SelectorIdioma from "@/components/SelectorIdioma";
 import type { Vista } from "./EscenaTerreno";
 
 interface Props {
@@ -55,6 +57,8 @@ function Segmentado<T extends string | number>({
 }
 
 export default function Controles3D({ onAcercar, onAlejar, vista, onVista, compacto = false }: Props) {
+  const { t } = useIdioma();
+  const TEXTOS = t;
   return (
     <div
       data-no-zoom
@@ -74,14 +78,15 @@ export default function Controles3D({ onAcercar, onAlejar, vista, onVista, compa
         </button>
       </div>
       <Segmentado
-        etiqueta="Vista"
+        etiqueta={t.vista}
         valor={vista}
         onCambio={onVista}
         opciones={[
           { v: "3d", texto: "3D" },
-          { v: "cenital", texto: "Cenital" },
+          { v: "cenital", texto: t.cenital },
         ]}
       />
+      <SelectorIdioma />
     </div>
   );
 }

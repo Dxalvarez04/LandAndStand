@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { Estado, MensajeDelWorker, Resultado, Ruta } from "@/lib/contract";
 import { N } from "@/lib/constants";
 import { combinar, tramo } from "@/lib/model/montecarlo";
+import { traductor } from "@/lib/i18n";
 
 /** Workers en paralelo: deja hilos libres para la página y el mapa 3D. */
 function tamanoPool() {
@@ -88,7 +89,7 @@ export function useModelo(estado: Estado) {
       w.onerror = (e) => {
         e.preventDefault();
         console.error("[modelo] worker:", e.message);
-        fallo("No se pudo calcular el escenario. Recarga la página.");
+        fallo(traductor().t.errorCalculo);
       };
       pool.push(w);
     }

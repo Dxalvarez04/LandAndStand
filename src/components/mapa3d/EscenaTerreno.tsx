@@ -57,6 +57,7 @@ import {
   type Encuadre,
 } from "@/lib/mapa3d/camara";
 import { DURACION_PANEL } from "@/lib/panel";
+import { useIdioma } from "@/lib/i18n";
 import Cielo, { direccionSol, HORIZONTE, CENIT } from "./Cielo";
 import Terreno, { zRefDe } from "./Terreno";
 import Sitios3D, { Reticula3D, type SitioPropio } from "./Sitios3D";
@@ -162,11 +163,12 @@ function EscenaTerreno(p: Props) {
     refrescar(lienzos.tProb);
     invalidate();
   }, [p.fotograma, lienzos, invalidate]);
+  const { pctEntero } = useIdioma();
   useEffect(() => {
-    pintarSuperposicion(lienzos.ctxSup, p.contornos);
+    pintarSuperposicion(lienzos.ctxSup, p.contornos, pctEntero);
     refrescar(lienzos.tSup);
     invalidate();
-  }, [p.contornos, lienzos, invalidate]);
+  }, [p.contornos, lienzos, invalidate, pctEntero]);
 
   // Lo demás que cambia la imagen sin pasar por la cámara: se pide un fotograma
   useEffect(() => {

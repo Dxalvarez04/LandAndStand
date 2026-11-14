@@ -4,7 +4,7 @@
  * Abajo a la derecha del 3D: atribución (acceso a las fuentes), escala (solo en cenital, donde es
  * constante) y brújula que gira con la cámara: la flecha siempre apunta al norte del terreno.
  */
-import { distancia } from "@/lib/mapa/textos";
+import { useIdioma } from "@/lib/i18n";
 
 const PASOS_M = [50, 100, 200, 250, 500, 1000, 2000, 5000];
 const SOMBRA = "[text-shadow:0_0_3px_rgba(6,10,23,1),0_0_6px_rgba(6,10,23,0.9)]";
@@ -18,6 +18,7 @@ interface Props {
 }
 
 export default function Brujula({ azimut, mPorPx, onFuentes, textoFuentes }: Props) {
+  const { t, distancia } = useIdioma();
   let escala: { m: number; px: number } | null = null;
   if (mPorPx && mPorPx > 0) {
     const m = [...PASOS_M].reverse().find((v) => v / mPorPx <= 110) ?? PASOS_M[0];
@@ -34,7 +35,7 @@ export default function Brujula({ azimut, mPorPx, onFuentes, textoFuentes }: Pro
         }}
         className="pointer-events-auto -my-3 -mr-2 flex h-11 items-center px-2 text-[11.5px] text-[#d9dfee] outline-none hover:text-white focus-visible:text-white"
       >
-        <span className="underline decoration-[#d9dfee]/50 underline-offset-2">Fuentes</span>
+        <span className="underline decoration-[#d9dfee]/50 underline-offset-2">{t.fuentes}</span>
         <span className="hidden sm:inline">&nbsp;· {textoFuentes}</span>
       </button>
       <div className="flex items-end gap-4">
@@ -47,7 +48,7 @@ export default function Brujula({ azimut, mPorPx, onFuentes, textoFuentes }: Pro
         <div
           className="relative flex h-12 w-12 items-center justify-center rounded-full bg-[#060a17]/75 ring-1 ring-inset ring-[#a0beff]/20"
           role="img"
-          aria-label={`Norte a ${Math.round(((azimut % 360) + 360) % 360)} grados`}
+          aria-label={t.norteA(Math.round(((azimut % 360) + 360) % 360))}
         >
           {/* Rosa: marcas cada 45°, aguja de rombo (mitad norte clara, mitad sur apagada) y la N en la punta */}
           <svg width="48" height="48" viewBox="-24 -24 48 48" style={{ transform: `rotate(${azimut}deg)` }} aria-hidden>

@@ -7,7 +7,8 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 
 export const metadata: Metadata = {
   title: "Land & Stand",
-  description: "El mapa de Marte según el cuerpo que lo pisa. NASA Space Apps Challenge 2026.",
+  description:
+    "Mars as it looks to the body that walks it: the probability of walking from the habitat to each point of Gale crater and back, sol by sol. NASA Space Apps Challenge 2026.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -32,6 +32,8 @@ export interface Sitio {
   pia: string;
   /** Ruta en /public/fotos */
   foto?: string;
+  /** Textos en inglés */
+  en?: { nombre?: string; contexto?: string; tareas?: string[] };
 }
 
 /** Punto de referencia (sitio de Curiosity, T1–T6). */
@@ -53,6 +55,8 @@ export interface DestinoMision {
   contexto?: string;
   /** true en los destinos propuestos (M1…); los añadidos por la tripulación no lo llevan */
   propuesto?: boolean;
+  /** Textos en inglés (solo los propuestos: lo que escribe la tripulación se queda como está) */
+  en?: { nombre?: string; contexto?: string; tareas?: string[] };
 }
 
 export const HABITAT: Omit<Sitio, "distanciaKm" | "desnivelM" | "pia"> & { id: string } = {
@@ -61,6 +65,7 @@ export const HABITAT: Omit<Sitio, "distanciaKm" | "desnivelM" | "pia"> & { id: s
   northKm: 2.7,
   eastKm: 1.36,
   contexto: "Roca de la formación Murray junto a dunas Bagnold",
+  en: { nombre: "Habitat", contexto: "Murray formation bedrock next to the Bagnold dunes" },
 };
 
 export const DESTINOS: Destino[] = [
@@ -78,6 +83,14 @@ export const DESTINOS: Destino[] = [
       "Recoger una muestra de arena para granulometría.",
       "Fotografiar la estratificación cruzada de las dunas.",
     ],
+     en: {
+      contexto: "Dark Bagnold dune field",
+      tareas: [
+        "Measure ripples and wind direction on the dune.",
+        "Collect a sand sample for grain-size analysis.",
+        "Photograph the cross-bedding of the dunes.",
+      ],
+    },
   },
   {
     id: "T2",
@@ -92,6 +105,13 @@ export const DESTINOS: Destino[] = [
       "Levantar la columna estratigráfica del cerro testigo.",
       "Muestrear la arenisca resistente de la cima.",
     ],
+     en: {
+      contexto: "Isolated butte on the plain",
+      tareas: [
+        "Log the stratigraphic column of the butte.",
+        "Sample the resistant sandstone at the top.",
+      ],
+    },
   },
   {
     id: "T3",
@@ -108,6 +128,15 @@ export const DESTINOS: Destino[] = [
       "Documentar concreciones y cambios de color.",
       "Comparar la secuencia con Glen Torridon.",
     ],
+     en: {
+      contexto: "Vera Rubin Ridge (a demanding climb)",
+      tareas: [
+        "Sample the hematite-bearing sandstone of Vera Rubin Ridge.",
+        "Measure the dip and fracturing of the strata.",
+        "Document concretions and color changes.",
+        "Compare the sequence with Glen Torridon.",
+      ],
+    },
   },
   {
     id: "T4",
@@ -123,6 +152,14 @@ export const DESTINOS: Destino[] = [
       "Analizar minerales de alteración y materia orgánica.",
       "Cartografiar la transición hacia la unidad de sulfatos.",
     ],
+     en: {
+      contexto: "Clay-rich unit of Glen Torridon",
+      tareas: [
+        "Collect a clay-rich mudstone sample.",
+        "Analyze alteration minerals and organic matter.",
+        "Map the transition toward the sulfate unit.",
+      ],
+    },
   },
   {
     id: "T5",
@@ -137,6 +174,13 @@ export const DESTINOS: Destino[] = [
       "Medir la discordancia del pedimento Greenheugh.",
       "Muestrear el conglomerado del escarpe.",
     ],
+     en: {
+      contexto: "Greenheugh pediment scarp",
+      tareas: [
+        "Measure the Greenheugh pediment unconformity.",
+        "Sample the scarp's conglomerate.",
+      ],
+    },
   },
   {
     id: "T6",
@@ -153,6 +197,15 @@ export const DESTINOS: Destino[] = [
       "Registrar estructuras sedimentarias y posibles biofirmas.",
       "Fotografiar la laminación a escala centimétrica.",
     ],
+     en: {
+      contexto: "Ancient lakebed in Glen Torridon",
+      tareas: [
+        "Sample the laminated lakebed mudstone.",
+        "Analyze the chemistry of the fine sediments.",
+        "Record sedimentary structures and possible biosignatures.",
+        "Photograph the lamination at centimeter scale.",
+      ],
+    },
   },
 ];
 
@@ -173,6 +226,15 @@ export const DESTINOS_MISION: DestinoMision[] = [
       "Fotografiar los cerros para el mapa de la zona.",
     ],
     propuesto: true,
+     en: {
+      nombre: "Northern hills",
+      contexto: "Pale rock hills 0.6 km north, almost level with the habitat",
+      tareas: [
+        "Set up the weather station.",
+        "Test the radio link with the habitat.",
+        "Photograph the hills for the area map.",
+      ],
+    },
   },
   {
     id: "M2",
@@ -185,6 +247,15 @@ export const DESTINOS_MISION: DestinoMision[] = [
       "Comprobar si el terreno es practicable para el rover.",
     ],
     propuesto: true,
+     en: {
+      nombre: "Western sand field",
+      contexto: "Dark sand next to a block of pale rock, on flat ground 1.1 km west",
+      tareas: [
+        "Collect regolith for the water-extraction tests.",
+        "Measure the thickness of the sand layer.",
+        "Check whether the ground is passable for the rover.",
+      ],
+    },
   },
   {
     id: "M3",
@@ -197,6 +268,15 @@ export const DESTINOS_MISION: DestinoMision[] = [
       "Muestrear la roca clara de la cresta.",
     ],
     propuesto: true,
+     en: {
+      nombre: "Pale ridge",
+      contexto: "Top of the pale rock ridge south of the habitat, about 100 m higher",
+      tareas: [
+        "Install a radio repeater on the top.",
+        "Photograph the panorama of the study area.",
+        "Sample the pale rock of the ridge.",
+      ],
+    },
   },
   {
     id: "M4",
@@ -209,6 +289,15 @@ export const DESTINOS_MISION: DestinoMision[] = [
       "Colocar balizas de referencia.",
     ],
     propuesto: true,
+     en: {
+      nombre: "Northeast plain",
+      contexto: "Gently sloping plain (around 5%) 1.5 km northeast",
+      tareas: [
+        "Survey the plain as a cargo landing zone.",
+        "Measure the slope and look for loose boulders.",
+        "Place reference beacons.",
+      ],
+    },
   },
   {
     id: "M5",
@@ -217,6 +306,15 @@ export const DESTINOS_MISION: DestinoMision[] = [
     contexto: "Terreno fracturado detrás de la cresta, unos 120 m por encima del hábitat",
     tareas: ["Desplegar un sismómetro.", "Cartografiar las fracturas.", "Muestrear el relleno de las fracturas."],
     propuesto: true,
+     en: {
+      nombre: "Southern fractured ground",
+      contexto: "Fractured ground behind the ridge, about 120 m above the habitat",
+      tareas: [
+        "Deploy a seismometer.",
+        "Map the fractures.",
+        "Sample the fracture fill.",
+      ],
+    },
   },
   {
     id: "M6",
@@ -229,6 +327,15 @@ export const DESTINOS_MISION: DestinoMision[] = [
       "Buscar una ruta de subida para salidas futuras.",
     ],
     propuesto: true,
+     en: {
+      nombre: "Eastern scarp",
+      contexto: "Edge of the pale eastern mesa, about 140 m above the habitat",
+      tareas: [
+        "Photograph the scarp from its base.",
+        "Sample the rock at the mesa edge.",
+        "Look for a climbing route for future EVAs.",
+      ],
+    },
   },
 ];
 

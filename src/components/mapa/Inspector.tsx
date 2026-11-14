@@ -13,7 +13,7 @@ import { FOTOS } from "@/lib/data/fotos";
 import type { IdDestino } from "@/lib/contract";
 import { DESTINOS, celdaALatLon } from "@/lib/data/targets";
 import { CELDA_HABITAT, type Celda, distanciaM } from "@/lib/mapa/geo";
-import { TEXTOS, distancia, franjaDe, latLon, pct } from "@/lib/mapa/textos";
+import { enIdioma, useIdioma } from "@/lib/i18n";
 import type { EstadoRuta } from "@/hooks/useRuta";
 import type { PerfilRuta } from "@/lib/mapa/perfil";
 import { COLOR_RUTA } from "./CapaRuta";
@@ -90,6 +90,7 @@ interface Props {
 }
 
 function Cerrar({ onCerrar }: { onCerrar: () => void }) {
+  const { t: TEXTOS } = useIdioma();
   return (
     <button
       type="button"
@@ -123,6 +124,7 @@ function Linea({ discontinua }: { discontinua?: boolean }) {
 
 /** Cifra grande con el signo % pequeño y pegado (en monoespaciada el espacio se ve enorme). */
 function Porcentaje({ p, className }: { p: number | undefined; className: string }) {
+  const { pct } = useIdioma();
   if (p === undefined) return <p className={`${CIFRA} ${className} font-light leading-none`}>—</p>;
   const cifra = pct(p).replace(/\s*%$/, "");
   return (
@@ -135,14 +137,15 @@ function Porcentaje({ p, className }: { p: number | undefined; className: string
 
 /** Miniatura de lo que vio Curiosity; al pulsarla se abre el visor. */
 function Vista({ id, onAbrir, compacta }: { id: IdDestino; onAbrir: () => void; compacta?: boolean }) {
-  const f = FOTOS[id];
-  const etiqueta = f.tipo === "360" ? "360°" : f.tipo === "panoramica" ? "Panorámica" : "Foto";
+  const { t, idioma } = useIdioma();
+  const f = enIdioma(FOTOS[id], idioma);
+  const etiqueta = t.tipoFoto[f.tipo];
   if (compacta)
     return (
       <button
         type="button"
         onClick={onAbrir}
-        aria-label={`Ver lo que vio Curiosity: ${f.titulo}`}
+        aria-label={t.verFoto(f.titulo)}
         className="relative h-11 w-11 shrink-0 overflow-hidden rounded-[2px] border border-[#a0beff]/25"
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- miniatura local ya reducida */}
@@ -158,7 +161,7 @@ function Vista({ id, onAbrir, compacta }: { id: IdDestino; onAbrir: () => void; 
       {/* eslint-disable-next-line @next/next/no-img-element -- miniatura local ya reducida */}
       <img src={f.mini} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
       <span className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-[#060a17]/85 px-2 py-1 text-[12px]">
-        <span>Lo que vio Curiosity</span>
+        <span>{t.vioCuriosity}</span>
         <span className={`${CIFRA} text-[11px] text-[#b9c6e6]`}>{etiqueta} ↗</span>
       </span>
     </button>
@@ -194,16 +197,19 @@ export default function Inspector({
   const clave = `${celda.fila}-${celda.columna}`;
   const [previa, setPrevia] = useState<{ clave: string; id: string } | null>(null);
 
-  const referencia = destino ? DESTINOS.find((d) => d.id === destino) : undefined;
+  const { t, idioma, distancia, latLon, franjaDe, pctEntero } = useIdioma();
+  const TEXTOS = t;
+  const encontrada = destino ? DESTINOS.find((d) => d.id === destino) : undefined;
+  const referencia = encontrada && enIdioma(encontrada, idioma);
   const nombre = referencia ? referencia.nombre : (personalizado?.nombre ?? null);
-  const contexto = referencia ? `Punto de referencia · ${referencia.contexto}` : personalizado?.contexto;
+  const contexto = referencia ? `${t.referencia} · ${referencia.contexto}` : personalizado?.contexto;
   const etiqueta = destino ?? personalizado?.id ?? null;
   const tareas = personalizado?.tareas.filter((t) => t.trim()) ?? [];
   const f = p !== undefined ? franjaDe(p) : null;
   const { lat, lon } = celdaALatLon(celda.fila, celda.columna);
   const esHabitat = celda.fila === CELDA_HABITAT.fila && celda.columna === CELDA_HABITAT.columna;
   const alcance = f?.id === "muy" || f?.id === "probable";
-  const titulo = nombre ?? (esHabitat ? TEXTOS.habitat : "Punto seleccionado");
+  const titulo = nombre ?? (esHabitat ? TEXTOS.habitat : t.puntoSeleccionado);
   const colorFrase = alcance ? "text-[#ffcf70]" : "text-[#b9c6e6]";
   // Un punto cualquiera o un punto de referencia se pueden añadir; un destino de la misión ya lo es
   const puedeAgregar = !!onAgregarDestino && !personalizado && !esHabitat;
@@ -221,7 +227,7 @@ export default function Inspector({
         <div className="min-w-0 flex-1 leading-tight">
           <p className="truncate text-[14px]">{titulo}</p>
           <p className={`truncate text-[12px] ${colorFrase}`}>
-            {f ? f.nombre : "Sin resultado"}
+            {f ? f.nombre : t.sinResultadoCorto}
             {!esHabitat && <span className={`${CIFRA} text-[#8d9cc2]`}> · {distancia(distanciaM(CELDA_HABITAT, celda))}</span>}
           </p>
         </div>
@@ -229,8 +235,8 @@ export default function Inspector({
           <button
             type="button"
             onClick={onAgregarDestino}
-            aria-label="Añadir a los destinos de la misión"
-            title="Añadir a los destinos de la misión"
+            aria-label={t.agregarMision}
+            title={t.agregarMision}
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[3px] border border-dashed border-[#a0beff]/30 outline-none transition-colors hover:bg-white/[0.04] focus-visible:border-[#eaf0ff]/70"
           >
             <IconoAgregar />
@@ -270,7 +276,7 @@ export default function Inspector({
       {/* ¿Puedo ir y volver? */}
       <div className="px-3.5 pb-3 pt-2.5">
         <Porcentaje p={p} className="text-[36px]" />
-        <p className={`mt-1.5 text-[13.5px] ${colorFrase}`}>{f ? f.frase : "Sin resultado todavía"}</p>
+        <p className={`mt-1.5 text-[13.5px] ${colorFrase}`}>{f ? f.frase : t.sinResultadoTodavia}</p>
         {contexto && <p className="mt-2 text-[12px] leading-snug text-[#8d9cc2]">{contexto}</p>}
         {destino && (
           <div className="mt-3">
@@ -282,7 +288,7 @@ export default function Inspector({
       {/* Destino de la misión: lo que la tripulación quiere hacer allí (se edita en el panel) */}
       {tareas.length > 0 && (
         <div className="border-t border-[#a0beff]/15 px-3.5 py-2">
-          <p className="text-[12px] text-[#8d9cc2]">Tareas previstas</p>
+          <p className="text-[12px] text-[#8d9cc2]">{t.tareasPrevistas}</p>
           <ul className="mt-1 space-y-0.5 text-[13px]">
             {tareas.slice(0, 3).map((t, i) => (
               <li key={i} className="flex gap-2">
@@ -290,7 +296,7 @@ export default function Inspector({
                 <span className="min-w-0 truncate">{t}</span>
               </li>
             ))}
-            {tareas.length > 3 && <li className="pl-4 text-[12px] text-[#8d9cc2]">y {tareas.length - 3} más en el panel</li>}
+            {tareas.length > 3 && <li className="pl-4 text-[12px] text-[#8d9cc2]">{t.masEnPanel(tareas.length - 3)}</li>}
           </ul>
         </div>
       )}
@@ -299,24 +305,27 @@ export default function Inspector({
         <dl className="border-t border-[#a0beff]/15 px-3.5 py-2 text-[13px]">
           {/* ¿A qué distancia? */}
           <div className="flex items-baseline justify-between py-1">
-            <dt className="text-[#8d9cc2]">Distancia al hábitat</dt>
+            <dt className="text-[#8d9cc2]">{t.distanciaHabitat}</dt>
             <dd className={CIFRA}>{distancia(distanciaM(CELDA_HABITAT, celda))}</dd>
           </div>
           {/* ¿Por dónde? */}
           <div className="flex items-center justify-between py-1">
-            <dt className="text-[#8d9cc2]">Ruta{ruta.aproximada && " (aprox.)"}</dt>
+            <dt className="text-[#8d9cc2]">
+              {t.ruta}
+              {ruta.aproximada && t.aprox}
+            </dt>
             <dd className="flex items-center gap-3">
               {ruta.ruta ? (
                 <>
                   <span className="flex items-center gap-1.5">
-                    <Linea /> {TEXTOS.rutaIda}
+                    <Linea /> {t.ida}
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <Linea discontinua /> {TEXTOS.rutaVuelta}
+                    <Linea discontinua /> {t.vuelta}
                   </span>
                 </>
               ) : (
-                <span className="text-[#8d9cc2]">{ruta.cargando ? "…" : "Sin ruta"}</span>
+                <span className="text-[#8d9cc2]">{ruta.cargando ? "…" : t.sinRuta}</span>
               )}
             </dd>
           </div>
@@ -324,14 +333,14 @@ export default function Inspector({
           {perfil && (
             <>
               <div className="flex items-baseline justify-between py-1">
-                <dt className="text-[#8d9cc2]">Recorrido de ida</dt>
+                <dt className="text-[#8d9cc2]">{t.recorridoIda}</dt>
                 <dd className={CIFRA}>
                   {distancia(perfil.longitudM)} · +{Math.round(perfil.subidaM)} m
                 </dd>
               </div>
               <div className="flex items-baseline justify-between py-1">
-                <dt className="text-[#8d9cc2]">Pendiente máx.</dt>
-                <dd className={CIFRA}>{Math.round(perfil.pendienteMax)} %</dd>
+                <dt className="text-[#8d9cc2]">{t.pendienteMax}</dt>
+                <dd className={CIFRA}>{pctEntero(Math.round(perfil.pendienteMax))}</dd>
               </div>
             </>
           )}
@@ -346,7 +355,7 @@ export default function Inspector({
             className="flex h-10 w-full items-center justify-center gap-2 rounded-[3px] border border-dashed border-[#a0beff]/30 text-[13.5px] text-[#eaf0ff] outline-none transition-colors hover:border-[#a0beff]/50 hover:bg-white/[0.03] focus-visible:border-[#eaf0ff]/70"
           >
             <IconoAgregar />
-            Añadir a los destinos de la misión
+            {t.agregarMision}
           </button>
         </div>
       )}

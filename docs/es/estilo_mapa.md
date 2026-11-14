@@ -61,6 +61,8 @@ La página nunca hace scroll: solo hay dos zonas, mapa y panel. El mapa ocupa si
 
 En el globo de Marte y durante el descenso solo se ve el mapa: el panel entra cuando la cámara ya se ha posado en la zona de estudio y sale al volver al globo (bajo el fundido). Una pestaña en su borde (a la izquierda en horizontal, arriba en vertical) lo esconde y lo vuelve a sacar; al elegir un punto para un destino nuevo vuelve a salir solo.
 
+La interfaz está en español y en inglés: el selector de idioma va con los controles del mapa (arriba a la derecha) y la elección se recuerda en ese dispositivo.
+
 En el terreno 3D, cada esquina tiene una función fija:
 
 | Esquina | Contenido |
@@ -149,7 +151,7 @@ El mapa principal es 3D (`src/components/mapa3d/`); el 2D queda como plan B si n
 
 ## Panel
 
-El panel sigue el mismo estilo que el mapa. Las piezas comunes están en `src/components/panel/comun.tsx`: `CIFRA`, los colores de texto y borde, `num()` (decimales con coma), `Seccion`, `Deslizador`, `MarcaDestino` y `Chevron`.
+El panel sigue el mismo estilo que el mapa. Las piezas comunes están en `src/components/panel/comun.tsx`: `CIFRA`, los colores de texto y borde, `Seccion`, `Deslizador`, `MarcaDestino` y `Chevron`. Los textos y los formatos de número (coma decimal en español, punto en inglés) salen de `useIdioma()`, en `src/lib/i18n.ts`.
 
 - **Estructura:** una columna sólida (`#0a0f1f`) dividida en secciones con un borde de 1 px. Cada sección tiene título (15 px, peso 500), una ayuda corta y el valor a la derecha en monoespaciada («sol 1 / 30», «35 %»).
 - **Estado del cálculo:** solo mientras se calcula, una barra de 2 px pegada al borde superior del panel (para lectores de pantalla, «Calculando el escenario»). No ocupa sitio, así que nada se mueve al arrastrar un deslizador. Arrastrar un deslizador no acumula cálculos: solo se calcula el último valor.

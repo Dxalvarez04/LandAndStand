@@ -9,7 +9,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import type { FotoDestino } from "@/lib/data/fotos";
-import { TEXTOS } from "@/lib/mapa/textos";
+import { enIdioma, useIdioma } from "@/lib/i18n";
 import { CIFRA } from "./fuente";
 
 const ZOOM_MAX = 5;
@@ -20,27 +20,27 @@ interface Props {
   onCerrar: () => void;
 }
 
-const CARDINALES = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSO", "SO", "OSO", "O", "ONO", "NO", "NNO"];
-const cardinal = (grados: number) => CARDINALES[Math.round(grados / 22.5) % 16];
+const cardinal = (cardinales: string[], grados: number) => cardinales[Math.round(grados / 22.5) % 16];
 
 /** Datos oficiales de la imagen (NASA Photojournal), al lado de la imagen o abajo en móvil. */
 function FichaOficial({ foto }: { foto: FotoDestino }) {
+  const { t } = useIdioma();
   const filas: [string, string | undefined][] = [
     ["PIA", foto.pia],
-    ["Cámara", foto.camara],
-    ["Sol", foto.sol],
-    ["Tomada", foto.tomada],
-    ["Publicada", foto.publicada],
-    ["Imágenes", foto.imagenes ? String(foto.imagenes) : undefined],
-    ["Crédito", foto.credito],
+    [t.camara, foto.camara],
+    [t.sol, foto.sol],
+    [t.tomada, foto.tomada],
+    [t.publicada, foto.publicada],
+    [t.imagenes, foto.imagenes ? String(foto.imagenes) : undefined],
+    [t.credito, foto.credito],
   ];
   return (
     <aside
-      aria-label="Ficha oficial de la imagen"
+      aria-label={t.fichaOficialAria}
       className="flex w-[340px] shrink-0 flex-col gap-3 overflow-y-auto overscroll-contain border-l border-[#a0beff]/15 bg-[#060a17] p-4 max-sm:absolute max-sm:inset-x-0 max-sm:bottom-0 max-sm:max-h-[60%] max-sm:w-auto max-sm:border-l-0 max-sm:border-t"
     >
       <div>
-        <p className="text-[12px] text-[#8d9cc2]">Título oficial (NASA)</p>
+        <p className="text-[12px] text-[#8d9cc2]">{t.tituloOficial}</p>
         <h3 className="mt-0.5 text-[15px] font-medium leading-snug">{foto.tituloOficial}</h3>
       </div>
       <p className="text-[13.5px] leading-relaxed text-[#b9c6e6]">{foto.descripcion}</p>
@@ -60,17 +60,20 @@ function FichaOficial({ foto }: { foto: FotoDestino }) {
         rel="noopener noreferrer"
         className="flex h-11 items-center justify-between rounded-[3px] border border-[#a0beff]/20 px-3 text-[13.5px] outline-none hover:bg-white/[0.06] focus-visible:ring-1 focus-visible:ring-white/70"
       >
-        Ver en la web de la NASA
+        {t.verNasa}
         <span aria-hidden>↗</span>
       </a>
       <p className="text-[11.5px] leading-snug text-[#8d9cc2]">
-        Descripción: resumen en español del pie de foto oficial. Imagen de dominio público.
+        {t.notaDescripcion}
       </p>
     </aside>
   );
 }
 
-export default function VisorFoto({ foto, nombre, onCerrar }: Props) {
+export default function VisorFoto({ foto: fotoOriginal, nombre, onCerrar }: Props) {
+  const { t, idioma } = useIdioma();
+  const TEXTOS = t;
+  const foto = enIdioma(fotoOriginal, idioma);
   // La ficha oficial se ve de entrada en pantallas anchas (el visor solo existe en el cliente)
   const [info, setInfo] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
   const marcoRef = useRef<HTMLDivElement>(null);
@@ -244,7 +247,7 @@ export default function VisorFoto({ foto, nombre, onCerrar }: Props) {
             aria-pressed={info}
             className={`mr-1 h-11 rounded-[3px] px-3 text-[14px] outline-none focus-visible:ring-1 focus-visible:ring-white/70 ${info ? "bg-white/[0.08] text-[#eaf0ff]" : "text-[#b9c6e6] hover:text-white"}`}
           >
-            Ficha oficial
+            {t.fichaOficial}
           </button>
           <div className="hidden items-center sm:flex">
             <button
@@ -297,7 +300,7 @@ export default function VisorFoto({ foto, nombre, onCerrar }: Props) {
             autoFocus
             className="ml-2 h-11 rounded-[3px] border border-[#a0beff]/20 px-4 text-[14px] hover:bg-white/[0.06] outline-none focus-visible:ring-1 focus-visible:ring-white/70"
           >
-            Volver al mapa
+            {t.volverMapa}
           </button>
         </div>
       </header>
@@ -346,13 +349,13 @@ export default function VisorFoto({ foto, nombre, onCerrar }: Props) {
           <div
             className="pointer-events-none absolute left-1/2 top-0 flex -translate-x-1/2 flex-col items-center"
             aria-live="polite"
-            aria-label={`Mirando al ${cardinal(rumbo)}, ${rumbo} grados`}
+            aria-label={t.mirando(cardinal(t.cardinales, rumbo), rumbo)}
           >
             <span className="h-3 w-px bg-[#eaf0ff]" />
             <span
               className={`${CIFRA} mt-1 rounded-[3px] bg-[#03050c]/85 px-2 py-0.5 text-[12px] text-[#eaf0ff]`}
             >
-              {String(rumbo).padStart(3, "0")}° {cardinal(rumbo)}
+              {String(rumbo).padStart(3, "0")}° {cardinal(t.cardinales, rumbo)}
             </span>
           </div>
         )}
@@ -364,10 +367,10 @@ export default function VisorFoto({ foto, nombre, onCerrar }: Props) {
       <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-[#a0beff]/15 px-4 py-2 text-[12.5px] text-[#8d9cc2]">
         <span className="truncate">{foto.titulo}</span>
         <span className="shrink-0 sm:hidden">
-          {gira ? "Arrastra para girar" : "Arrastra o pellizca"}
+          {gira ? t.ayudaGiraCorta : t.ayudaMueveCorta}
         </span>
         <span className="hidden shrink-0 sm:inline">
-          {gira ? "Arrastra para girar 360°" : "Arrastra para moverte"} · rueda
+          {gira ? t.ayudaGira : t.ayudaMueve} · {t.rueda}
           o pellizco para ampliar · Esc para volver
         </span>
       </footer>

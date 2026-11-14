@@ -46,3 +46,6 @@ next-env.d.ts
 
 # caché de descargas de scripts/preparar_datos*.py
 /scripts/.cache/
+
+# salidas de herramientas de generación (las imágenes elegidas están en docs/img/)
+/output/

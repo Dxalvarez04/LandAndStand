@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Piezas comunes del panel con el estilo del mapa («Apolo», ver docs/estilo_mapa.md):
+ * Piezas comunes del panel con el estilo del mapa («Apolo», ver docs/es/estilo_mapa.md):
  * secciones separadas por una línea fina (sin tarjetas apiladas), títulos en frase normal,
  * cifras en IBM Plex Mono y deslizadores con marcas, de 44 px de alto para el dedo.
  */
@@ -19,7 +19,7 @@ export const TEXTO = {
 export const BORDE = "border-[#a0beff]/[0.14]";
 export const AMBAR = "#ffcf70";
 
-/** Número con coma decimal, como en el mapa. */
+/** Número con coma decimal (español). En la interfaz se usa `num` de useIdioma(), que sigue el idioma. */
 export const num = (v: number, decimales = 1) => v.toFixed(decimales).replace(".", ",");
 
 export function Seccion({

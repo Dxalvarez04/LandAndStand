@@ -1,9 +1,10 @@
 "use client";
 
 /** Al pasar el ratón: probabilidad de la celda en palabras y número. */
-import { franjaDe, pct } from "@/lib/mapa/textos";
+import { useIdioma } from "@/lib/i18n";
 
 export default function Tooltip({ x, y, p, ancho }: { x: number; y: number; p: number; ancho: number }) {
+  const { franjaDe, pct } = useIdioma();
   const f = franjaDe(p);
   const izquierda = x > ancho - 200; // dar la vuelta cerca del borde derecho
   return (

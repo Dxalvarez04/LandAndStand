@@ -1,9 +1,10 @@
 "use client";
 
 /**
- * Contornos del 50 % (punteado claro) y del 90 % (ámbar). Ver docs/estilo_mapa.md.
+ * Contornos del 50 % (punteado claro) y del 90 % (ámbar). Ver docs/es/estilo_mapa.md.
  * Se dibujan dentro de un <g> con la transformación mundo → pantalla; el grosor no cambia con el zoom.
  */
+import { useIdioma } from "@/lib/i18n";
 import type { Contorno } from "@/lib/mapa/contornos";
 import { ESTILO } from "@/lib/mapa/estilo";
 
@@ -44,6 +45,7 @@ export function EtiquetasContornos({
   /** Punto de pantalla que la etiqueta no debe tapar (la etiqueta del hábitat) */
   evitar: { x: number; y: number };
 }) {
+  const { pctEntero } = useIdioma();
   return (
     <g fontSize={12} fontWeight={500} textAnchor="start" style={{ paintOrder: "stroke" }}>
       {contornos.map((c) => {
@@ -52,7 +54,7 @@ export function EtiquetasContornos({
         if (Math.hypot(p.x - evitar.x, p.y - evitar.y) < 70) return null;
         return (
           <text key={c.umbral} x={p.x + 6} y={p.y - 4} fill={COLOR_CONTORNO[c.umbral]} stroke="rgba(4,8,20,0.8)" strokeWidth={3}>
-            {Math.round(c.umbral * 100)} %
+            {pctEntero(Math.round(c.umbral * 100))}
           </text>
         );
       })}

@@ -18,6 +18,8 @@ export interface PerfilAstronauta extends Tripulante {
   thLim?: number;
   /** Déficit angular inicial en grados (por defecto 7.5°) */
   dTh?: number;
+  /** Textos en inglés */
+  en?: Partial<Pick<PerfilAstronauta, "nombre" | "rol" | "arquetipo" | "descripcion">>;
 }
 
 export const PERFILES_ASTRONAUTAS: PerfilAstronauta[] = [
@@ -33,6 +35,13 @@ export const PERFILES_ASTRONAUTAS: PerfilAstronauta[] = [
     delta: 0.12,
     tauA: 10,
     tauB: 0.8,
+     en: {
+      nombre: "Dr. Elena Vega",
+      rol: "Mission Commander",
+      arquetipo: "Elite athlete / Marathon",
+      descripcion:
+        "Exceptional cardiovascular fitness. Meets NASA's requirement from Sol 1. Low power draw and the longest individual reach (> 2.4 km).",
+    },
   },
   {
     id: "A2",
@@ -46,6 +55,13 @@ export const PERFILES_ASTRONAUTAS: PerfilAstronauta[] = [
     delta: 0.16,
     tauA: 15,
     tauB: 0.95,
+     en: {
+      nombre: "Dr. Marcus Vance",
+      rol: "Mission Specialist",
+      arquetipo: "Standard astronaut / Average",
+      descripcion:
+        "Canonical ISS profile and the model's central value. On Sol 1 he is deconditioned (34.5 mL/kg/min) and regains the NASA standard on Sol 7.",
+    },
   },
   {
     id: "A3",
@@ -59,6 +75,13 @@ export const PERFILES_ASTRONAUTAS: PerfilAstronauta[] = [
     delta: 0.15,
     tauA: 14,
     tauB: 1.0,
+     en: {
+      nombre: "Eng. Lars Lindholm",
+      rol: "Cargo and Habitat Engineer",
+      arquetipo: "Strength / Heavy build",
+      descripcion:
+        "High aerobic power but a heavy body mass. His high metabolic power draw puts the suit's batteries and life support to the test.",
+    },
   },
   {
     id: "A4",
@@ -72,6 +95,13 @@ export const PERFILES_ASTRONAUTAS: PerfilAstronauta[] = [
     delta: 0.14,
     tauA: 12,
     tauB: 0.9,
+     en: {
+      nombre: "Dr. Yasmine Al-Mansoor",
+      rol: "Field Geologist",
+      arquetipo: "Light / High efficiency",
+      descripcion:
+        "Lowest body mass (54 kg) and very low consumption. The longest life-support autonomy on long science traverses.",
+    },
   },
   {
     id: "A5",
@@ -85,6 +115,13 @@ export const PERFILES_ASTRONAUTAS: PerfilAstronauta[] = [
     delta: 0.18,
     tauA: 24,
     tauB: 1.2,
+     en: {
+      nombre: "Dr. Alexei Morozov",
+      rol: "Astrobiologist",
+      arquetipo: "NASA limit / Sedentary",
+      descripcion:
+        "Right at the pre-flight regulatory limit (36.5 mL/kg/min). After landing he drops to 31.0 mL/kg/min and needs almost a month to be fit for EVAs.",
+    },
   },
   {
     id: "A6",
@@ -100,6 +137,13 @@ export const PERFILES_ASTRONAUTAS: PerfilAstronauta[] = [
     tauB: 3.2,
     thLim: 24,
     dTh: 10.0,
+     en: {
+      nombre: "Dr. Chloe Bennett",
+      rol: "Pilot and Navigation",
+      arquetipo: "Balance deficit",
+      descripcion:
+        "Excellent cardiovascular capacity but strong sensorimotor and vestibular impairment. Steep hills stop her during the first sols.",
+    },
   },
   {
     id: "A7",
@@ -113,6 +157,13 @@ export const PERFILES_ASTRONAUTAS: PerfilAstronauta[] = [
     delta: 0.24,
     tauA: 28,
     tauB: 1.5,
+     en: {
+      nombre: "Tech. Kenji Sato",
+      rol: "Robotics Specialist",
+      arquetipo: "Severe deconditioning",
+      descripcion:
+        "Marked cardiovascular decline from weightlessness (−24%). On pair or group EVAs he is the bottleneck that limits the team.",
+    },
   },
   {
     id: "A8",
@@ -126,6 +177,13 @@ export const PERFILES_ASTRONAUTAS: PerfilAstronauta[] = [
     delta: 0.11,
     tauA: 6,
     tauB: 0.5,
+     en: {
+      nombre: "Dr. Sarah O'Connor",
+      rol: "Flight Surgeon",
+      arquetipo: "Ultra-fast readaptation",
+      descripcion:
+        "Accelerated adaptation curve (tauA = 6 sols). By Sol 3 she is already at 95% of her pre-flight functional capacity.",
+    },
   },
 ];
 
