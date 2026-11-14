@@ -14,14 +14,15 @@ import TarjetasDestino from "@/components/panel/TarjetasDestino";
 import PanelSupuestos from "@/components/panel/PanelSupuestos";
 import Creditos from "@/components/panel/Creditos";
 import BarraProgreso from "@/components/panel/BarraProgreso";
+import { PERFILES_ASTRONAUTAS } from "@/lib/data/perfiles";
 
 const ESTADO_INICIAL: Estado = {
   sol: 1,
   modo: "tripulante",
   tripulantes: [
-    { vo2pre: CENTRALES.vo2pre, masa: CENTRALES.masa },
-    { vo2pre: 36, masa: 82 },
-    { vo2pre: 42, masa: 70 },
+    { vo2pre: PERFILES_ASTRONAUTAS[1].vo2pre, masa: PERFILES_ASTRONAUTAS[1].masa }, // Dr. Marcus Vance (Estándar)
+    { vo2pre: PERFILES_ASTRONAUTAS[0].vo2pre, masa: PERFILES_ASTRONAUTAS[0].masa }, // Dra. Elena Vega (Atleta)
+    { vo2pre: PERFILES_ASTRONAUTAS[3].vo2pre, masa: PERFILES_ASTRONAUTAS[3].masa }, // Dra. Yasmine Al-Mansoor (Ligera)
   ],
   fwalk: "U",
   energiaHoras: 6,
