@@ -3,7 +3,7 @@
 **El mapa de Marte según el cuerpo que lo pisa.** NASA Space Apps Challenge 2026 · Madrid · reto [*Interplanetary survival guide: Martian map*](https://www.spaceappschallenge.org/2026/challenges/interplanetary-survival-guide-martian-map/).
 
 > *Every team will map Mars. We map Mars as it looks to a body just back from six months in zero gravity.*
-
+ 
 Web de demostración que muestra, sobre el terreno real del cráter Gale, la probabilidad de que un astronauta recién llegado, o una pareja, pueda ir a pie a cada punto y volver, según el sol de misión. La capa cambia al cambiar de tripulante, de sol o de escenario de diseño.
 
 ## Documentos
