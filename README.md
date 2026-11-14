@@ -1,6 +1,6 @@
 # Land & Stand
 
-**El mapa de Marte según el cuerpo que lo pisa.** NASA Space Apps Challenge 2026 · Madrid · reto [*Interplanetary survival guide: Martian map*](https://www.spaceappschallenge.org/2026/challenges/interplanetary-survival-guide-martian-map/).
+**The map of Mars according to the body that walks on it.** NASA Space Apps Challenge 2026, Madrid, challenge: Interplanetary survival guide: Martian map. https://www.spaceappschallenge.org/2026/challenges/interplanetary-survival-guide-martian-map/
 
 > *Every team will map Mars. We map Mars as it looks to a body just back from six months in zero gravity.*
  
