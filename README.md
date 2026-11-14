@@ -4,9 +4,9 @@
 
 > *Every team will map Mars. We map Mars as it looks to a body just back from six months in zero gravity.*
  
-Web de demostración que muestra, sobre el terreno real del cráter Gale, la probabilidad de que un astronauta recién llegado, o una pareja, pueda ir a pie a cada punto y volver, según el sol de misión. La capa cambia al cambiar de tripulante, de sol o de escenario de diseño.
+A demo website that shows, over the real terrain of Gale Crater, the probability that a newly arrived astronaut, or a pair of astronauts, can walk to each point and back, depending on the mission sol. The layer updates when you switch crew member, sol or design scenario.
 
-## Arrancar
+## Start
 
 ```bash
 npm install
@@ -16,7 +16,7 @@ npm run build   # comprobar que compila antes de subir
 
 Next.js 16 (App Router) + TypeScript + Tailwind 4. Ojo: Next 16 cambia APIs; ver `AGENTS.md` y `node_modules/next/dist/docs/`.
 
-## Estructura
+## Structure
 
 ```
 src/
