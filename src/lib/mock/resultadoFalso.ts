@@ -12,7 +12,7 @@ export function resultadoFalso(estado: Estado): Resultado {
   const fw = estado.fwalk === "U" ? 0.35 : estado.fwalk;
   const radio =
     (12 + estado.sol * 0.8) * (fw / 0.35) * (estado.energiaHoras === 4 ? 0.7 : 1) *
-    (estado.modo === "pareja" ? 0.9 : 1);
+    (estado.modo === "pareja" ? 0.9 : estado.modo === "grupo" ? 0.8 : 1);
 
   const prob = new Float32Array(N * N);
   for (let f = 0; f < N; f++) {

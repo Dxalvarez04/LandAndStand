@@ -5,10 +5,31 @@
  */
 import type { Parametros } from "./tipos";
 
-export function vo2max(_s: number, _p: Parametros): number {
-  throw new Error("TODO persona 1: capa 2, vo2max");
+/**
+ * Capacidad aeróbica máxima (mL/kg/min) en función del sol transcurrido.
+ *
+ * @param s Sol transcurrido desde el aterrizaje (s = 1 es el primer día en Marte).
+ * @param p Parámetros que contienen vo2pre (VO₂ previo), delta (déficit inicial) y tauA (constante de recuperación aeróbica).
+ * @returns vo2max del día en mL/kg/min.
+ */
+export function vo2max(
+  s: number,
+  p: Pick<Parametros, "vo2pre" | "delta" | "tauA"> | Parametros,
+): number {
+  return p.vo2pre * (1 - p.delta * Math.exp(-s / p.tauA));
 }
 
-export function thetaMax(_s: number, _p: Parametros): number {
-  throw new Error("TODO persona 1: capa 2, thetaMax");
+/**
+ * Pendiente máxima transitable por equilibrio (grados) en función del sol transcurrido.
+ *
+ * @param s Sol transcurrido desde el aterrizaje (s = 1 es el primer día en Marte).
+ * @param p Parámetros que contienen thLim (ángulo límite de equilibrio), dTh (déficit angular inicial) y tauB (constante de recuperación sensoriomotora).
+ * @returns theta_max del día en grados sexagesimales.
+ */
+export function thetaMax(
+  s: number,
+  p: Pick<Parametros, "thLim" | "dTh" | "tauB"> | Parametros,
+): number {
+  return p.thLim - p.dTh * Math.exp(-s / p.tauB);
 }
+

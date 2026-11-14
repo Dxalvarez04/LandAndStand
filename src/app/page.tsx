@@ -17,11 +17,11 @@ import BarraProgreso from "@/components/panel/BarraProgreso";
 
 const ESTADO_INICIAL: Estado = {
   sol: 1,
-  modo: "poblacion",
-  // TODO: tripulantes ficticios de la demo (pendiente en el README)
+  modo: "tripulante",
   tripulantes: [
     { vo2pre: CENTRALES.vo2pre, masa: CENTRALES.masa },
     { vo2pre: 36, masa: 82 },
+    { vo2pre: 42, masa: 70 },
   ],
   fwalk: "U",
   energiaHoras: 6,

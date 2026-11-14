@@ -7,7 +7,7 @@
  *   Persona 2 (mapa)   → pinta `Resultado.prob`; persona 3 → pinta `Resultado.destinos`
  */
 
-export type Modo = "poblacion" | "tripulante" | "pareja";
+export type Modo = "tripulante" | "pareja" | "grupo";
 
 /** "U" = U(0,30; 0,40) (por defecto). El resto son escenarios fijos. */
 export type FWalk = "U" | 0.3 | 0.35 | 0.4 | 0.47 | 0.5;
@@ -25,7 +25,7 @@ export interface Estado {
   /** 1..30 */
   sol: number;
   modo: Modo;
-  /** 1 en modo tripulante, 2 en modo pareja; se ignora en modo población */
+  /** 1 en modo tripulante, 2 en modo pareja, 3 o más en modo grupo */
   tripulantes: Tripulante[];
   fwalk: FWalk;
   energiaHoras: EnergiaHoras;
