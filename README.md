@@ -39,8 +39,6 @@ The first astronauts to set foot on Mars will arrive after some six months witho
 |:---:|:---:|
 | ![Mars globe with Gale crater marked](docs/img/en-globo.jpg) | ![Study area in 3D with the probability, the destinations and the panel](docs/img/en-terreno.jpg) |
 | Mars globe (Viking + MOLA) | Study area in 3D, sol 1 |
-| ![Top-down view with north up and scale](docs/img/en-cenital.jpg) | <img src="docs/img/en-movil.jpg" alt="Phone layout, with the panel in the bottom half" width="270"> |
-| Top-down view, sol 12 | Phone |
 
 
 ### How it would be used on the mission
