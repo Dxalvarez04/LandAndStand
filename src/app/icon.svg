@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="titulo">
+  <title id="titulo">Land &amp; Stand</title>
+  <!--
+    Logo de Land & Stand: insignia redonda con un cohete que despega dejando su estela, un latido
+    (el cuerpo de la tripulación) y la Tierra abajo. Colores: azul noche, naranja y crema.
+  -->
+  <defs>
+    <clipPath id="interior">
+      <circle cx="256" cy="256" r="233" />
+    </clipPath>
+    <path id="latido" fill="none" stroke-linejoin="round" stroke-linecap="round" d="M20 291 H104 C112 291 116 271 125 271 C134 271 138 291 147 291 H200 C206 291 210 279 216 279 C222 279 226 293 232 293 L241 316 L256 172 L276 357 L290 291 H330 C342 291 346 258 358 258 C370 258 374 291 386 291 H492" />
+    <path id="chispa" d="M0 -11 C1.5 -2 2 -1.5 11 0 C2 1.5 1.5 2 0 11 C-1.5 2 -2 1.5 -11 0 C-2 -1.5 -1.5 -2 0 -11 Z" />
+  </defs>
+
+  <!-- Insignia: borde azul, anillo crema y fondo azul -->
+  <circle cx="256" cy="256" r="254" fill="#13284b" />
+  <circle cx="256" cy="256" r="237" fill="none" stroke="#f6efe2" stroke-width="7" />
+
+  <g clip-path="url(#interior)">
+    <!-- Estrellas -->
+    <g fill="#f6efe2">
+      <path d="M256 30 L262.6 46.9 L280.7 47.9 L266.6 59.4 L271.3 76.9 L256 67.1 L240.7 76.9 L245.4 59.4 L231.3 47.9 L249.4 46.9 Z" />
+      <use href="#chispa" x="132" y="116" />
+      <use href="#chispa" x="300" y="162" transform="translate(300 162) scale(0.9) translate(-300 -162)" />
+      <use href="#chispa" x="376" y="214" />
+      <use href="#chispa" x="74" y="257" transform="translate(74 257) scale(0.9) translate(-74 -257)" />
+      <use href="#chispa" x="416" y="337" transform="translate(416 337) scale(0.85) translate(-416 -337)" />
+      <circle cx="188" cy="84" r="4.5" />
+      <circle cx="342" cy="92" r="4.5" />
+      <circle cx="393" cy="139" r="4.5" />
+      <circle cx="83" cy="172" r="4.5" />
+      <circle cx="132" cy="205" r="4.5" />
+      <circle cx="439" cy="196" r="4.5" />
+      <circle cx="90" cy="339" r="4.5" />
+      <circle cx="345" cy="345" r="4.5" />
+    </g>
+
+    <!-- Estela del cohete: ancha abajo, se estrecha hasta la tobera -->
+    <path
+      d="M84 420 C110 352 150 300 166 250 C178 212 196 186 216 166 L226 172 C210 196 200 222 194 252 C186 300 166 352 148 420 Z"
+      fill="#e5613d"
+      stroke="#f6efe2"
+      stroke-width="3"
+      stroke-linejoin="round"
+    />
+
+    <!-- Latido: línea base, onda P, complejo QRS y onda T -->
+    <use href="#latido" stroke="#f6efe2" stroke-width="11" />
+    <use href="#latido" stroke="#e5613d" stroke-width="5.5" />
+
+    <!-- Cohete -->
+    <g transform="translate(236 122) rotate(24)" stroke="#f6efe2" stroke-width="2.6" stroke-linejoin="round">
+      <path d="M-11 9 L-23 31 L-21 39 L-9 29 Z" fill="#e5613d" />
+      <path d="M11 9 L23 31 L21 39 L9 29 Z" fill="#e5613d" />
+      <path d="M-6.5 29 H6.5 L5 37 H-5 Z" fill="#e5613d" />
+      <path d="M0 -50 C13 -36 15 -11 11 30 H-11 C-15 -11 -13 -36 0 -50 Z" fill="#e5613d" />
+      <circle cx="0" cy="-15" r="5.5" fill="#f6efe2" stroke="none" />
+      <circle cx="0" cy="-15" r="2.4" fill="#e5613d" stroke="none" />
+    </g>
+
+    <!-- La Tierra -->
+    <circle cx="256" cy="616" r="241" fill="#13284b" stroke="#f6efe2" stroke-width="7" />
+    <g fill="#f6efe2">
+      <!-- Norteamérica -->
+      <path d="M150 412 C164 398 186 392 206 394 C214 388 226 386 236 392 C246 390 256 396 258 404 C250 410 252 418 262 420 C270 428 266 440 254 444 C246 452 238 462 236 474 C228 470 222 478 214 486 C206 478 200 470 188 468 C178 470 172 462 168 450 C160 444 152 438 156 428 C150 424 148 418 150 412 Z" />
+      <path d="M212 488 C218 490 222 498 220 508 L214 512 L208 500 Z" />
+      <!-- Groenlandia -->
+      <path d="M268 386 C276 380 292 380 302 386 C306 394 300 404 290 410 C280 412 272 406 268 398 Z" />
+      <!-- Islas del norte -->
+      <path d="M236 382 C242 378 252 380 254 386 C248 390 240 390 236 382 Z" />
+      <path d="M312 392 C318 388 326 390 326 396 C320 400 314 398 312 392 Z" />
+      <!-- Europa y África -->
+      <path d="M336 396 C346 390 360 392 368 398 C378 398 388 404 392 414 C398 424 396 436 388 440 C384 432 374 430 368 436 C362 432 352 432 346 424 C340 418 334 408 336 396 Z" />
+      <path d="M362 444 C372 442 382 448 386 458 C384 470 376 478 368 476 C362 466 358 454 362 444 Z" />
+    </g>
+  </g>
+</svg>

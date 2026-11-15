@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="public/logo.svg" alt="Land & Stand logo: a rocket lifting off over a heartbeat line, with Earth below" width="128">
+
 # Land & Stand
 
 **Mars as it looks to the body that walks it**
@@ -26,6 +28,7 @@ The first astronauts to set foot on Mars will arrive after some six months witho
 
 ## What you can do
 
+- **Start on the project page.** The page opens with Mars as a crescent and tells the project section by section as you scroll: with each one the planet turns, moves and catches the light (it is the tool's own globe, rendered live). "Open the interactive map", or tapping the planet in the last section, moves it into the globe in a single smooth motion, and "Project" takes you back to the page where you left it.
 - **Fly down from the Mars globe to Gale.** The whole planet with Viking color and MOLA relief; tap Gale crater and the camera descends in a single continuous move, with no cut and no stop: it zooms in on the crater and Mount Sharp, which rise in relief on the way down, and arcs into the study area, in 3D on the real terrain. "Mars globe" does the same in reverse. The panel comes in when the camera lands.
 - **See what's reachable.** The round-trip probability tints the ground (viridis scale), and the 50% and 90% contours are drawn as crisp lines at any zoom. The reachable area grows as the sols go by and the crew readapts.
 - **Choose who walks.** One person, a pair or a group of any size, from eight astronaut profiles that are always in view in the panel, each with a bar showing how far they can go and return on flat ground that sol. A group moves at the pace of its most limited member, and the panel says who that is.
@@ -150,7 +153,7 @@ python3 scripts/preparar_datos_3d.py   # globe, Gale region, 3D terrain and its 
 
 ```
 src/
-├── app/page.tsx              Screen: holds the state, mounts the map and the panel
+├── app/page.tsx              Screen: holds the state, mounts the project page, the map and the panel
 ├── lib/
 │   ├── contract.ts           State, Result and worker messages
 │   ├── constants.ts          Constants from the specification
@@ -158,14 +161,18 @@ src/
 │   ├── model/                Computation: layers 2 to 6 (with their tests)
 │   ├── data/                 Habitat, destinations, landmarks, profiles, photos and sources
 │   ├── mapa/                 Map geometry, contours and rasterizing
+│   ├── portada/              Project page: the planet's shot for each section and the scroll path
 │   └── mapa3d/               3D coordinates, three-level relief, camera and gestures, haze, ray picking and labels
 ├── workers/modelo.worker.ts  Adds up its share of draws and computes routes
 ├── hooks/                    useModelo (splits the computation), useRuta, useTransicion…
 └── components/
     ├── mapa3d/               3D map: globe, descent, terrain, lines, labels, controls
     ├── mapa/                 2D fallback map, info card, legend, photo viewer, sources
+    ├── portada/              Project page over the globe: sections, scroll and the way into the tool
     └── panel/                Sol, crew, pace and mission destinations
 public/
+├── logo.svg                  Project logo (also the favicon, in app/)
+├── portada/                  Concept images on the project page
 ├── data/                     Processed elevation, images and heights (see its README)
 └── fotos/                    Curiosity images of each landmark
 scripts/                      Data preparation from the official sources

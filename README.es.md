@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="public/logo.svg" alt="Logo de Land & Stand: un cohete que despega sobre la línea de un latido, con la Tierra abajo" width="128">
+
 # Land & Stand
 
 **El mapa de Marte según el cuerpo que lo pisa**
@@ -26,6 +28,7 @@ Los primeros astronautas que pisen Marte llegarán tras unos seis meses sin grav
 
 ## Qué se puede hacer
 
+- **Empezar por la presentación.** La página se abre con Marte en creciente y cuenta el proyecto por secciones al hacer scroll: con cada una el planeta gira, se mueve y cambia de luz (es el mismo globo de la herramienta, en tiempo real). «Abrir el mapa interactivo», o tocar el planeta en la última sección, lo lleva al globo en un solo movimiento suave, y «Proyecto» vuelve a la presentación donde se dejó.
 - **Bajar del globo de Marte a Gale.** Marte entero con el color Viking y el relieve MOLA; se toca el cráter Gale y la cámara desciende en un solo movimiento, sin cortes ni paradas: se acerca al cráter y al monte Sharp, que van tomando relieve durante la bajada, y entra en arco en la zona de estudio, en 3D sobre el relieve real. «Globo de Marte» hace lo mismo al revés. El panel entra cuando la cámara se posa.
 - **Ver qué es alcanzable.** La probabilidad de ir y volver tiñe el terreno (escala viridis), y los contornos del 50 % y del 90 % son líneas nítidas a cualquier zoom. La zona crece al avanzar los soles, a medida que la tripulación se readapta.
 - **Elegir quién camina.** Una persona, una pareja o un grupo de cualquier tamaño, a partir de ocho perfiles de astronauta que están siempre a la vista en el panel, cada uno con una barra de hasta dónde puede ir y volver en llano ese sol. El grupo va al ritmo del miembro más limitado, y el panel dice quién es.
@@ -151,7 +154,7 @@ python3 scripts/preparar_datos_3d.py   # globo, región de Gale, terreno 3D y su
 
 ```
 src/
-├── app/page.tsx              Pantalla: guarda el estado, monta el mapa y el panel
+├── app/page.tsx              Pantalla: guarda el estado, monta la presentación, el mapa y el panel
 ├── lib/
 │   ├── contract.ts           Estado, Resultado y mensajes de los workers
 │   ├── constants.ts          Constantes de la especificación
@@ -159,14 +162,18 @@ src/
 │   ├── model/                Cálculo: capas 2 a 6 (con sus tests)
 │   ├── data/                 Hábitat, destinos, referencias, perfiles, fotos y fuentes
 │   ├── mapa/                 Geometría, contornos y rasterizado del mapa
+│   ├── portada/              Presentación: el plano del planeta en cada sección y el recorrido del scroll
 │   └── mapa3d/               Coordenadas, relieve en tres niveles, cámara y gestos, bruma, corte de rayos y rótulos del 3D
 ├── workers/modelo.worker.ts  Suma su tramo de sorteos y calcula rutas
 ├── hooks/                    useModelo (reparte el cálculo), useRuta, useTransicion…
 └── components/
     ├── mapa3d/               Mapa 3D: globo, descenso, terreno, líneas, etiquetas, controles
     ├── mapa/                 Mapa 2D de respaldo, ficha, clave, visor de fotos, fuentes
+    ├── portada/              Presentación sobre el globo: secciones, scroll y paso a la herramienta
     └── panel/                Sol, tripulación, ritmo y destinos de la misión
 public/
+├── logo.svg                  Logo del proyecto (también el favicon, en app/)
+├── portada/                  Imágenes conceptuales de la presentación
 ├── data/                     DEM, imágenes y alturas ya procesados (ver su README)
 └── fotos/                    Fotos de Curiosity de cada punto de referencia
 scripts/                      Preparación de los datos desde las fuentes oficiales
