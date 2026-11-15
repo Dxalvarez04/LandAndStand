@@ -50,7 +50,7 @@ import { ORBITA, suave } from "@/lib/mapa3d/camara";
 import { GALE, latLonAVector, ZONA } from "@/lib/mapa3d/coordenadas";
 import { ajustarCamara, ponerArriba, ponerSRGB } from "@/lib/mapa3d/imperativo";
 import { frenar, lanzar, pendiente, TRANSITO, type FotoTransito } from "@/lib/mapa3d/transito";
-import { copiarPose, mezclarPoses, nuevaPose, poseEn, poseGlobo, suavizar, ULTIMA } from "@/lib/portada/escenas";
+import { copiarPose, giroEntre, mezclarPoses, nuevaPose, poseEn, poseGlobo, suavizar, ULTIMA } from "@/lib/portada/escenas";
 import { useIdioma } from "@/lib/i18n";
 
 const COLOR_DIA = new Color("#d6a27c");
@@ -88,6 +88,11 @@ const LUZ_ORBITA = { tinte: 1.0, ambiente: 1.1, sol: 2.6, velo: 0.07 };
  * llegar a la demo).
  */
 const PORTADA = { inercia: 3.2, mezcla: 2.8, deriva: 0.09, periodo: 90 };
+/**
+ * Paso de la portada al globo (al tocar el planeta o «Abrir el mapa» desde cualquier sección):
+ * duración (s) base y lo que se alarga si el planeta tiene que dar media vuelta (desde la portada)
+ */
+const ASIENTO = { base: 2.4, mediaVuelta: 1.6 };
 /** Avance del descenso (0 = lejos, 1 = órbita baja) en el que el sol ya es el de la escena del terreno */
 const SOL_LISTO = 0.75;
 const EJE_Y = new Vector3(0, 1, 0);
@@ -480,7 +485,7 @@ export default function EscenaGlobo({
   const paisaje = useRef({ listo: false, mezclar: false, s: 0, mezcla: 1, t: 0, capturada: nuevaPose(), objetivo: nuevaPose(), actual: nuevaPose() });
   // Al salir de la portada (se ha tocado el planeta), la cámara pasa del último plano de la portada a
   // la vista de inicio del globo: se acerca y Marte gira un poco. Después el globo se gira a mano.
-  const asiento = useRef({ k: 1, desde: nuevaPose(), hasta: nuevaPose(), actual: nuevaPose() });
+  const asiento = useRef({ k: 1, dur: ASIENTO.base, desde: nuevaPose(), hasta: nuevaPose(), actual: nuevaPose() });
   const [asentando, setAsentando] = useState(false);
   const portadaPrevia = useRef(portada);
   useEffect(() => {
@@ -498,15 +503,16 @@ export default function EscenaGlobo({
       c.getTarget(a.desde.mira);
       a.desde.arriba.copy(camera.up);
       a.desde.sol.copy(sol);
+      a.dur = ASIENTO.base + ASIENTO.mediaVuelta * Math.min(1, giroEntre(a.desde, poseGlobo(aspecto, a.hasta)) / 180);
       setAsentando(true);
     }
     portadaPrevia.current = portada;
-  }, [portada, camera, sol]);
+  }, [portada, camera, sol, aspecto]);
   const asentar = (dt: number) => {
     const c = controles.current;
     const a = asiento.current;
     if (!c) return;
-    a.k = Math.min(1, a.k + Math.min(dt, 0.1) / PORTADA.mezcla);
+    a.k = reducido ? 1 : Math.min(1, a.k + Math.min(dt, 0.1) / a.dur);
     poseGlobo(aspecto, a.hasta);
     const p = mezclarPoses(a.desde, a.hasta, suave(a.k), a.actual);
     if (a.k >= 1) {

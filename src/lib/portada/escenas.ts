@@ -222,16 +222,57 @@ export function poseGlobo(aspecto: number, out: Pose = nuevaPose()): Pose {
   return poseDeValores(valores(PLANO_GLOBO, aspecto < 1), aspecto, out);
 }
 
-/** Mezcla dos poses (k ∈ [0, 1]); la distancia al planeta, en logaritmo. */
+/** Latitud y longitud (grados) de la dirección de `v`, con el convenio de latLonAVector. */
+function latLonDe(v: Vector3) {
+  const r = v.length();
+  const lat = MathUtils.radToDeg(Math.asin(MathUtils.clamp(v.y / r, -1, 1)));
+  const lon = MathUtils.radToDeg(Math.atan2(v.z, -v.x)) - 180;
+  return { lat, lon: ((lon + 540) % 360) - 180 };
+}
+
+/** Base de la cámara de una pose sin desviar la mirada: derecha, arriba y hacia la cámara. */
+function base(pos: Vector3, derecha: Vector3, arriba: Vector3, atras: Vector3) {
+  atras.copy(pos).normalize();
+  derecha.crossVectors(EJE_Y, atras).normalize();
+  arriba.crossVectors(atras, derecha).normalize();
+}
+
+const bA = [new Vector3(), new Vector3(), new Vector3()];
+const bB = [new Vector3(), new Vector3(), new Vector3()];
+const bK = [new Vector3(), new Vector3(), new Vector3()];
+
+/**
+ * Mezcla dos poses (k ∈ [0, 1]) girando el planeta sobre su eje: la cámara va de un punto a otro por
+ * latitud y longitud (por el lado corto), así que aunque las dos vistas miren a caras opuestas el
+ * planeta da media vuelta suave en vez de pasar por dentro. El punto de mira y el sol se mezclan
+ * vistos desde la cámara (el planeta se centra y la luz barre la cara mientras gira); la distancia,
+ * en logaritmo.
+ */
 export function mezclarPoses(a: Pose, b: Pose, k: number, out: Pose): Pose {
-  const da = a.pos.length();
-  const db = b.pos.length();
-  const dist = Math.exp(MathUtils.lerp(Math.log(da), Math.log(db), k));
-  out.pos.copy(a.pos).normalize().lerp(tmpN.copy(b.pos).normalize(), k).normalize().multiplyScalar(dist);
-  out.mira.copy(a.mira).lerp(b.mira, k);
+  const la = latLonDe(a.pos);
+  const lb = latLonDe(b.pos);
+  let dLon = lb.lon - la.lon;
+  dLon -= 360 * Math.round(dLon / 360);
+  const dist = Math.exp(MathUtils.lerp(Math.log(a.pos.length()), Math.log(b.pos.length()), k));
+  out.pos.set(...latLonAVector(MathUtils.lerp(la.lat, lb.lat, k), la.lon + dLon * k, dist));
+
+  base(a.pos, bA[0], bA[1], bA[2]);
+  base(b.pos, bB[0], bB[1], bB[2]);
+  base(out.pos, bK[0], bK[1], bK[2]);
+  // Punto de mira: desvío en el plano de la pantalla (derecha, arriba)
+  const mx = MathUtils.lerp(a.mira.dot(bA[0]), b.mira.dot(bB[0]), k);
+  const my = MathUtils.lerp(a.mira.dot(bA[1]), b.mira.dot(bB[1]), k);
+  out.mira.set(0, 0, 0).addScaledVector(bK[0], mx).addScaledVector(bK[1], my);
+  // Sol: visto desde la cámara (derecha, arriba, hacia la cámara)
+  const s = [0, 1, 2].map((q) => MathUtils.lerp(a.sol.dot(bA[q]), b.sol.dot(bB[q]), k));
+  out.sol.set(0, 0, 0).addScaledVector(bK[0], s[0]).addScaledVector(bK[1], s[1]).addScaledVector(bK[2], s[2]).normalize();
   out.arriba.copy(a.arriba).lerp(b.arriba, k).normalize();
-  out.sol.copy(a.sol).lerp(b.sol, k).normalize();
   return out;
+}
+
+/** Cuánto gira el planeta (grados) al pasar de una pose a otra: para ajustar la duración. */
+export function giroEntre(a: Pose, b: Pose): number {
+  return MathUtils.radToDeg(a.pos.angleTo(b.pos));
 }
 
 /** Arranca y frena suave (smoothstep) */

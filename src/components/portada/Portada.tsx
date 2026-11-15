@@ -15,6 +15,9 @@
  *   - El planeta no recibe toques mientras se lee (los recoge esta capa, así el scroll táctil
  *     funciona encima de él); en la demo, un botón redondo encima del planeta es lo que se toca.
  *   - Fuera de la portada (en la demo) la capa se funde y queda inerte; la página no se desplaza.
+ *   - «Abrir el mapa» (en la portada y en la cabecera) entra en la herramienta desde cualquier punto:
+ *     los textos se funden y el planeta se coloca en la vista del globo en un solo movimiento suave
+ *     (gira sobre su eje hacia Gale, se centra y la luz barre la cara).
  *
  * Estilo (para que no parezca una plantilla): el único movimiento con intención es el del planeta;
  * los textos solo se funden. Títulos en Space Mono, el resto en Jost (la letra de la herramienta) y
@@ -78,7 +81,6 @@ export default function Portada({ activa, recorridoRef, carga, onEntrar }: Props
   const p = t.presentacion;
   const reducido = useSyncExternalStore(sinSuscripcion, esReducido, () => false);
   const capa = useRef<HTMLDivElement>(null);
-  const [actual, setActual] = useState(0);
   const [enDemo, setEnDemo] = useState(false);
 
   // ---- Scroll → recorrido: para el globo (ref) y para los textos (estilos directos, sin renderizar) ----
@@ -95,7 +97,6 @@ export default function Portada({ activa, recorridoRef, carga, onEntrar }: Props
         el.style.opacity = String(o);
         el.style.visibility = o < 0.01 ? "hidden" : "visible";
       });
-      setActual(Math.round(s));
       setEnDemo(s >= EN_DEMO);
     };
     const pedir = () => {
@@ -142,18 +143,15 @@ export default function Portada({ activa, recorridoRef, carga, onEntrar }: Props
     };
   }, [activa, recorridoRef, reducido]);
 
-  /** Lleva el scroll al plano de la sección `i` (donde el planeta reposa) */
-  const irA = (i: number) => {
-    const max = document.documentElement.scrollHeight - window.innerHeight;
-    window.scrollTo({ top: (i / ULTIMA) * max, behavior: reducido ? "auto" : "smooth" });
-  };
+  /** Vuelve al principio de la portada */
+  const alInicio = () => window.scrollTo({ top: 0, behavior: reducido ? "auto" : "smooth" });
+
+  /** Entra en la herramienta desde cualquier punto de la portada: el globo se coloca solo, suave */
+  const abrirHerramienta = onEntrar;
 
   const tocable = activa && enDemo && carga === "globo";
-  const nombres = [p.inicio.nombre, p.problema.nombre, p.idea.nombre, p.modelo.nombre, p.mision.nombre, p.demo.nombre];
-  // Cada sección ocupa la capa fija entera; el planeta va en la parte que deja libre. A la derecha,
-  // sitio para el índice
-  const SECCION =
-    "absolute inset-0 flex px-5 sm:px-10 lg:px-16 [@media(min-width:900px)_and_(orientation:landscape)]:pr-36";
+  // Cada sección ocupa la capa fija entera; el planeta va en la parte que deja libre
+  const SECCION = "absolute inset-0 flex px-5 sm:px-10 lg:px-16";
   const OCULTA = "invisible opacity-0";
 
   return (
@@ -171,44 +169,25 @@ export default function Portada({ activa, recorridoRef, carga, onEntrar }: Props
         <header className="pointer-events-auto absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 px-5 pt-4 sm:px-10 sm:pt-6 lg:px-16">
           <button
             type="button"
-            onClick={() => irA(0)}
-            className={`${MONO} rounded-sm text-[14px] font-bold tracking-[-0.02em] text-white outline-none focus-visible:ring-1 focus-visible:ring-white/70 sm:text-[15px]`}
+            onClick={alInicio}
+            className="block shrink-0 rounded-full outline-none transition-transform duration-300 hover:scale-[1.04] focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
           >
-            Land &amp; Stand
+            {/* Solo el logo: el nombre ya está en grande en la portada */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- logo vectorial local */}
+            <img src="/logo.svg" alt="" width={64} height={64} className="h-12 w-12 sm:h-16 sm:w-16" />
+            <span className="sr-only">Land &amp; Stand</span>
           </button>
           <div className="flex items-center gap-2 sm:gap-3">
             <SelectorIdioma />
             <button
               type="button"
-              onClick={() => irA(ULTIMA)}
-              className="h-9 rounded-md bg-white px-3.5 text-[14px] font-medium text-black outline-none transition-colors hover:bg-[#dfe5f2] focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:px-4"
+              onClick={abrirHerramienta}
+              className="h-9 whitespace-nowrap rounded-md bg-white px-3.5 text-[14px] font-medium text-black outline-none transition-colors hover:bg-[#dfe5f2] focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:px-4"
             >
               {p.probar}
             </button>
           </div>
         </header>
-
-        {/* ---- Índice de secciones (escritorio) ---- */}
-        <nav
-          aria-label={p.secciones}
-          className="pointer-events-auto absolute right-5 top-1/2 z-20 hidden -translate-y-1/2 flex-col items-end lg:right-8 [@media(min-width:900px)_and_(orientation:landscape)]:flex"
-        >
-          {nombres.map((n, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => irA(i)}
-              aria-label={p.irA(n)}
-              aria-current={actual === i ? "step" : undefined}
-              className="group flex h-7 items-center gap-3 rounded-sm outline-none focus-visible:ring-1 focus-visible:ring-white/60"
-            >
-              <span className={`text-[13px] transition-opacity duration-300 ${actual === i ? "text-white opacity-100" : "text-[#9aa6c4] opacity-0 group-hover:opacity-100"}`}>
-                {n}
-              </span>
-              <span className={`block h-px transition-[width,background-color] duration-300 ${actual === i ? "w-8 bg-white" : "w-3.5 bg-white/35 group-hover:bg-white/80"}`} />
-            </button>
-          ))}
-        </nav>
 
         {/* ---- 0 · Portada: el título sobre la cara de noche ---- */}
         <section data-seccion={0} aria-labelledby="portada-titulo" className={`${SECCION} items-end pb-[15vh] landscape:items-center landscape:pb-0`}>
@@ -218,12 +197,24 @@ export default function Portada({ activa, recorridoRef, carga, onEntrar }: Props
               <br />
               &amp;&nbsp;Stand
             </h1>
-            <p className="mt-6 max-w-[24ch] text-[19px] leading-[1.35] text-white sm:mt-8 sm:text-[24px]">{p.inicio.subtitulo}</p>
-            <p className={`${SECUNDARIO} mt-4`}>{p.evento}</p>
+            <p className="mt-6 max-w-[26ch] text-[19px] leading-[1.35] text-white sm:mt-8 sm:text-[25px]">{p.inicio.subtitulo}</p>
+            {/*
+              Que se vea que esto no es solo una presentación: la herramienta está aquí. Botón y nota en
+              una fila, más o menos del ancho del título: le hacen de base.
+            */}
+            <div className="mt-8 flex flex-col items-start gap-3 sm:mt-11 sm:flex-row sm:items-center sm:gap-6">
+              <button
+                type="button"
+                onClick={abrirHerramienta}
+                className="pointer-events-auto h-12 shrink-0 rounded-md bg-white px-6 text-[16px] font-medium text-black outline-none transition-colors hover:bg-[#dfe5f2] focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black sm:h-14 sm:px-8 sm:text-[17px]"
+              >
+                {p.abrir}
+              </button>
+              <p className={`${SECUNDARIO} max-w-[25ch]`}>{p.abrirAyuda}</p>
+            </div>
           </div>
-          <p className="absolute inset-x-0 bottom-6 text-center text-[13px] text-[#9aa6c4] sm:bottom-8" aria-hidden>
-            {p.desliza}
-          </p>
+          {/* Pie de la portada: el evento */}
+          <p className="absolute inset-x-0 bottom-6 px-5 text-[13px] text-[#8390b0] sm:bottom-8 sm:px-10 lg:px-16">{p.evento}</p>
         </section>
 
         {/* ---- 1 · El problema (planeta a la derecha) ---- */}
@@ -308,11 +299,10 @@ export default function Portada({ activa, recorridoRef, carga, onEntrar }: Props
               >
                 {p.demo.titulo}
               </h2>
-              <p className={`${MONO} mt-4 whitespace-pre text-[12.5px] text-[#9aa6c4] sm:text-[13.5px]`}>{p.demo.lugar}</p>
               <p className={`${TEXTO} mt-5 hidden max-w-[34ch] landscape:block`}>{p.demo.texto}</p>
             </div>
             {/* Llamada: abajo en vertical, a la derecha del planeta en horizontal */}
-            <div className={`${SOMBRA} pb-5 landscape:flex landscape:w-[calc((100cqw_-_70cqh)/2_-_9rem)] landscape:justify-end landscape:pb-0`}>
+            <div className={`${SOMBRA} pb-5 landscape:flex landscape:w-[calc((100cqw_-_70cqh)/2_-_5.5rem)] landscape:justify-end landscape:pb-0`}>
               <Llamada carga={carga} tocable={tocable} onEntrar={onEntrar} />
             </div>
           </div>

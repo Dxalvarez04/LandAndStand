@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MathUtils, Vector3 } from "three";
-import { FOV, poseEn, poseGlobo, recorridoDeScroll, ULTIMA, visibilidad } from "./escenas";
+import { FOV, mezclarPoses, nuevaPose, poseEn, poseGlobo, recorridoDeScroll, ULTIMA, visibilidad } from "./escenas";
 import { GALE, latLonAVector } from "@/lib/mapa3d/coordenadas";
 
 /** Centro del planeta en pantalla (coordenadas normalizadas) para una pose y un aspecto. */
@@ -45,6 +45,24 @@ describe("portada · planos del planeta", () => {
       const gale = new Vector3(...latLonAVector(GALE.lat, GALE.lon));
       expect(gale.angleTo(g.pos)).toBeLessThan(MathUtils.degToRad(35));
     }
+  });
+
+  it("de la portada al globo, la mezcla da media vuelta suave sin saltos y acaba en la vista del globo", () => {
+    const a = poseEn(0, 16 / 9);
+    const b = poseGlobo(16 / 9);
+    const m = nuevaPose();
+    let antes = mezclarPoses(a, b, 0, nuevaPose()).pos.clone();
+    expect(antes.distanceTo(a.pos)).toBeLessThan(1e-6);
+    for (let k = 0.01; k <= 1.0001; k += 0.01) {
+      mezclarPoses(a, b, Math.min(k, 1), m);
+      expect(m.pos.length()).toBeGreaterThan(1.05);
+      expect(m.pos.distanceTo(antes)).toBeLessThan(0.2);
+      expect(Math.abs(m.sol.length() - 1)).toBeLessThan(1e-9);
+      antes = m.pos.clone();
+    }
+    expect(m.pos.distanceTo(b.pos)).toBeLessThan(1e-6);
+    expect(m.mira.length()).toBeLessThan(1e-6);
+    expect(m.sol.distanceTo(b.sol)).toBeLessThan(1e-6);
   });
 
   it("la portada es un creciente: el sol llega por detrás del planeta", () => {

@@ -173,24 +173,20 @@ const es = {
   // Portada (presentación del proyecto, antes de la demo)
   presentacion: {
     aria: "Presentación del proyecto",
-    probar: "Ver el mapa",
-    secciones: "Secciones",
-    irA: (n: string) => `Ir a: ${n}`,
-    desliza: "Desliza",
+    probar: "Abrir el mapa",
+    abrir: "Abrir el mapa interactivo",
+    abrirAyuda: "La herramienta funciona aquí mismo, en el navegador.",
     evento: "NASA Space Apps Challenge 2026, Madrid",
     inicio: {
-      nombre: "Inicio",
       subtitulo: "El mapa de Marte según el cuerpo que lo pisa.",
     },
     problema: {
-      nombre: "El problema",
       titulo: "Seis meses sin gravedad",
       texto:
         "Los primeros astronautas que pisen Marte llegarán tras unos seis meses sin gravedad, con menos forma aeróbica, peor equilibrio y menos fuerza. Tardarán días o semanas en recuperarse.",
       texto2: "Y la Tierra queda hasta a 24 minutos de radio. Nadie podrá guiarles en directo: la decisión de salir a pie es suya.",
     },
     idea: {
-      nombre: "La idea",
       titulo: "Un mapa que cambia con el cuerpo",
       texto:
         "Sobre el terreno real del cráter Gale, Land & Stand muestra qué probabilidad tiene cada tripulación de ir a pie a cada punto y volver, según el sol de la misión, quién camina y a qué intensidad.",
@@ -198,7 +194,6 @@ const es = {
         "Con la tripulación de ejemplo, el destino M1 tiene un 100 % de probabilidad de ida y vuelta desde el sol 1. El M6, a 1,8 km y unos 140 m más arriba, sigue siendo poco probable el sol 30.",
     },
     modelo: {
-      nombre: "Cómo funciona",
       titulo: "Seis capas, 300 escenarios",
       capas: [
         ["Terreno", "110 × 110 celdas de 32 m"],
@@ -211,7 +206,6 @@ const es = {
       nota: "Todo se calcula en tu navegador, repartido entre varios Web Workers. Un grupo de tres tarda menos de un segundo.",
     },
     mision: {
-      nombre: "En la misión",
       titulo: "De la nave a la muñeca",
       usos: [
         ["En la nave, al planificar la salida.", "Concepto: la herramienta en una pantalla de la nave"],
@@ -220,9 +214,7 @@ const es = {
       nota: "Imágenes conceptuales generadas con IA a partir de capturas reales de la herramienta. No son fotografías.",
     },
     demo: {
-      nombre: "Demo",
       titulo: "Aterriza en Gale",
-      lugar: "5,4° S  137,8° E",
       texto:
         "El cráter que Curiosity explora desde 2012. Elige el sol, quién sale y a qué intensidad, y mira hasta dónde puede ir y volver.",
       tocar: "Toca el planeta",
@@ -418,24 +410,20 @@ const en: Textos = {
   evento: "NASA Space Apps Challenge 2026 · Madrid",
   presentacion: {
     aria: "Project overview",
-    probar: "See the map",
-    secciones: "Sections",
-    irA: (n) => `Go to: ${n}`,
-    desliza: "Scroll",
+    probar: "Open the map",
+    abrir: "Open the interactive map",
+    abrirAyuda: "The tool runs right here, in your browser.",
     evento: "NASA Space Apps Challenge 2026, Madrid",
     inicio: {
-      nombre: "Home",
       subtitulo: "Mars as it looks to the body that walks it.",
     },
     problema: {
-      nombre: "The problem",
       titulo: "Six months without gravity",
       texto:
         "The first astronauts to set foot on Mars will arrive after some six months without gravity, with lower aerobic fitness, worse balance and less strength. Recovering takes days or weeks.",
       texto2: "And Earth is up to 24 light-minutes away. Nobody can guide them in real time: the call to go out on foot is theirs.",
     },
     idea: {
-      nombre: "The idea",
       titulo: "A map that changes with the body",
       texto:
         "On the real terrain of Gale crater, Land & Stand shows how likely each crew is to walk to every point and back, depending on the mission sol, who walks and how hard.",
@@ -443,7 +431,6 @@ const en: Textos = {
         "With the example crew, destination M1 has a 100% round-trip probability from sol 1. M6, 1.8 km away and about 140 m higher, is still unlikely on sol 30.",
     },
     modelo: {
-      nombre: "How it works",
       titulo: "Six layers, 300 scenarios",
       capas: [
         ["Terrain", "110 × 110 cells of 32 m"],
@@ -456,7 +443,6 @@ const en: Textos = {
       nota: "It all runs in your browser, split across several Web Workers. A group of three takes under a second.",
     },
     mision: {
-      nombre: "On the mission",
       titulo: "From the ship to the wrist",
       usos: [
         ["On board, planning the EVA.", "Concept: the tool on a screen inside the spacecraft"],
@@ -465,9 +451,7 @@ const en: Textos = {
       nota: "Concept images generated with AI from real screenshots of the tool. They are not photographs.",
     },
     demo: {
-      nombre: "Demo",
       titulo: "Land on Gale",
-      lugar: "5.4° S  137.8° E",
       texto:
         "The crater Curiosity has been exploring since 2012. Choose the sol, who walks and how hard, and see how far they can go and come back.",
       tocar: "Tap the planet",

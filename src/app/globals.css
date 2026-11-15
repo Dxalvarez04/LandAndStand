@@ -19,8 +19,8 @@ body {
 }
 
 /*
- * Portada: la página se desplaza sobre el globo y el índice de secciones dice dónde se está, así
- * que la barra de desplazamiento no se dibuja (tampoco cambia el ancho al bloquear el scroll en la demo).
+ * Portada: la página se desplaza sobre el globo a pantalla completa, sin barra de desplazamiento
+ * (así tampoco cambia el ancho del lienzo al bloquear el scroll en la demo).
  */
 html {
   scrollbar-width: none;
