@@ -28,7 +28,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import dynamic from "next/dynamic";
 import type { Estado } from "@/lib/contract";
 import { useModelo } from "@/hooks/useModelo";
-import Cabecera from "@/components/panel/Cabecera";
 import DeslizadorSol from "@/components/panel/DeslizadorSol";
 import SelectorCaminante from "@/components/panel/SelectorCaminante";
 import SelectorEscenario from "@/components/panel/SelectorEscenario";
@@ -265,7 +264,6 @@ export default function Home() {
             data-panel-scroll
             className="@container flex h-full w-full flex-col overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-color:rgba(160,190,255,0.28)_transparent] [scrollbar-width:thin]"
           >
-            <Cabecera />
             {error && (
               <p role="alert" className="border-b border-[#a0beff]/15 px-4 py-2 text-[12.5px] text-[#ffb4b4] @[400px]:px-5">
                 {error}

@@ -5,8 +5,8 @@
  * secciones separadas por una línea fina (sin tarjetas apiladas), títulos en frase normal,
  * cifras en IBM Plex Mono y controles de 44 px de alto para el dedo.
  *
- * El panel se lee de arriba abajo en tres bloques: qué es (Cabecera), la salida que se define
- * (tres preguntas: qué sol, quién sale, a qué ritmo) y lo que el modelo responde para los destinos.
+ * El panel se lee de arriba abajo: la salida que se define (tres preguntas: qué sol, quién sale, a
+ * qué ritmo) y lo que el modelo responde para los destinos.
  */
 import type { ReactNode } from "react";
 import { CIFRA } from "@/components/mapa/fuente";

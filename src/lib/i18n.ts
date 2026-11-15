@@ -107,8 +107,6 @@ const es = {
   esconderPanel: "Esconder el panel",
   mostrarPanel: "Mostrar el panel",
   calculandoEscenario: "Calculando el escenario",
-  panelTitulo: "Salida a pie",
-  panelAyuda: "El color del mapa es la probabilidad de ir y volver con esta salida.",
   // Panel · qué sol
   solTitulo: "Sol de la misión",
   solPregunta: "¿Qué sol?",
@@ -294,8 +292,6 @@ const en: Textos = {
   esconderPanel: "Hide panel",
   mostrarPanel: "Show panel",
   calculandoEscenario: "Computing scenario",
-  panelTitulo: "Walk plan",
-  panelAyuda: "The map's color is the round-trip probability for this walk.",
   solTitulo: "Mission sol",
   solPregunta: "Which sol?",
   solAyuda: "They land deconditioned; each sol they recover and their reach grows.",
