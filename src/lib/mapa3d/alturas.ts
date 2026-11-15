@@ -25,6 +25,11 @@ export interface AlturasGale {
   min: number;
   max: number;
   datos: Int16Array;
+  /**
+   * Factor RGB (lineal) que iguala la imagen de la región (paleta HiRISE) al color del globo (MDIM
+   * 2.1) cuando se pinta sobre él. Lo calcula scripts/preparar_datos_3d.py.
+   */
+  tinteGlobo: [number, number, number];
 }
 
 async function json<T>(url: string): Promise<T> {
@@ -59,13 +64,23 @@ export async function cargarAlturas(base = "/data/3d/terreno_alturas"): Promise<
   };
 }
 
-export async function cargarAlturasGale(base = "/data/3d/gale_alturas"): Promise<AlturasGale> {
-  const [meta, buf] = await Promise.all([
-    json<Omit<AlturasGale, "datos">>(`${base}.json`),
+let gale: Promise<AlturasGale> | null = null;
+
+/** Región de Gale (la usan el globo y el terreno: se pide una sola vez). */
+export function cargarAlturasGale(base = "/data/3d/gale_alturas"): Promise<AlturasGale> {
+  gale ??= Promise.all([
+    json<Omit<AlturasGale, "datos" | "tinteGlobo">>(`${base}.json`),
     binario(`${base}.bin`),
-  ]);
-  return { ...meta, datos: new Int16Array(buf) };
+    json<{ tinte_globo: [number, number, number] }>("/data/3d/gale_color.json").catch(() => ({ tinte_globo: [1, 1, 1] as [number, number, number] })),
+  ]).then(([meta, buf, color]) => ({ ...meta, datos: new Int16Array(buf), tinteGlobo: color.tinte_globo }));
+  gale.catch(() => {
+    gale = null;
+  });
+  return gale;
 }
+
+/** Entorno de la zona (todo el mosaico MSL) a 64 m. */
+export const cargarEntorno = () => cargarAlturas("/data/3d/entorno_alturas");
 
 /** Altura (m) en un punto en proyectadas, bilineal sobre centros de píxel; fuera de la caja, el borde. */
 export function alturaEn(a: Alturas, este: number, norte: number): number {

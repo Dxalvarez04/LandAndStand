@@ -1,0 +1,15 @@
+{
+  "ancho": 515,
+  "alto": 897,
+  "m_px": 64.0,
+  "tipo": "uint16 LE, decímetros sobre zmin, fila 0 = norte",
+  "caja_m": [
+    8128000.0,
+    -302208.0,
+    8160960.0,
+    -244800.0
+  ],
+  "zmin": -4627.0,
+  "zmax": -12.385384559631348,
+  "fuente": "USGS Astrogeology, MSL Gale Merged DEM 1 m v3; bordes fundidos con el DEM HRSC-MOLA 200 m v2"
+}

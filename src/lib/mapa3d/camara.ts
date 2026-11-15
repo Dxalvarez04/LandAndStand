@@ -1,19 +1,14 @@
 /**
- * Cámara del terreno 3D con camera-controls (CameraControls de drei):
- *   - lo que hace la persona (arrastrar, girar, rueda, pellizco) va amortiguado con un muelle crítico,
- *     sin tirones ni rebotes, y el zoom va hacia el cursor (como en un mapa);
- *   - los movimientos automáticos (llegada, cambio de vista, reencuadre) son vuelos con
- *     duración fija que interpolan en coordenadas esféricas alrededor del punto de mira: la cámara
- *     describe un arco, gira por el camino corto y arranca y frena con aceleración nula (smootherstep).
+ * Cámara del terreno 3D. El encuadre se guarda en coordenadas esféricas alrededor del punto de mira,
+ * que es el punto del suelo que queda en el centro de la vista:
+ *   - los gestos de la persona los lleva ControlMapa (control.ts), anclados al suelo como en un mapa;
+ *   - los movimientos automáticos (llegada, salida, cambio de vista, reencuadre, enfoque) son vuelos
+ *     de duración fija que interpolan el encuadre: la cámara describe un arco, gira por el camino
+ *     corto y arranca y frena con aceleración nula (smootherstep).
  */
-import { CameraControlsImpl } from "@react-three/drei";
-import { Box3, Vector3, type Object3D } from "three";
+import { Vector3 } from "three";
 
-const { ACTION } = CameraControlsImpl;
-
-export type Controles = CameraControlsImpl;
-
-/** Encuadre en coordenadas esféricas alrededor del punto de mira (convención de camera-controls). */
+/** Encuadre en coordenadas esféricas alrededor del punto de mira. */
 export interface Encuadre {
   /** Rumbo (azimut) en radianes: 0 = cámara al sur mirando al norte */
   theta: number;
@@ -29,8 +24,13 @@ export const suave = (k: number) => k * k * k * (k * (k * 6 - 15) + 10);
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
-export function encuadreActual(c: Controles): Encuadre {
-  return { theta: c.azimuthAngle, phi: c.polarAngle, r: c.distance, objetivo: c.getTarget(new Vector3()) };
+export function copiarEncuadre(e: Encuadre, out?: Encuadre): Encuadre {
+  if (!out) return { theta: e.theta, phi: e.phi, r: e.r, objetivo: e.objetivo.clone() };
+  out.theta = e.theta;
+  out.phi = e.phi;
+  out.r = e.r;
+  out.objetivo.copy(e.objetivo);
+  return out;
 }
 
 export function posicionDe(e: Encuadre, out = new Vector3()): Vector3 {
@@ -54,50 +54,14 @@ export function mezclar(a: Encuadre, b: Encuadre, k: number, out: Encuadre): Enc
 }
 
 /**
- * Límites amplios: se puede bajar hasta ~140 m del suelo, inclinar casi hasta el horizonte (86°) y
- * alejarse hasta ver todo el contexto. La cámara no atraviesa el relieve (colisión con el terreno)
- * y el punto de giro se posa en el suelo al soltar (ver EscenaTerreno).
+ * Límites de los gestos: acercarse hasta 180 m del suelo, inclinar casi hasta el horizonte (86°) y
+ * alejarse hasta ver todo el entorno. La cámara no baja de `despeje` metros sobre el relieve.
  */
-export const LIMITES = { minDistancia: 140, maxDistancia: 30_000, maxPolar: 1.5 };
-
-/** Gestos y límites según la vista. En cenital no se gira: el norte queda siempre arriba. */
-export function configurarControles(c: Controles, cenital: boolean) {
-  c.smoothTime = 0.32;
-  c.draggingSmoothTime = 0.14;
-  c.dollyToCursor = true;
-  c.dollySpeed = 0.85;
-  c.minDistance = LIMITES.minDistancia;
-  c.maxDistance = LIMITES.maxDistancia;
-  c.minPolarAngle = 0;
-  c.maxPolarAngle = LIMITES.maxPolar;
-  c.boundaryFriction = 0;
-  c.restThreshold = 0.004;
-  c.azimuthRotateSpeed = cenital ? 0 : 0.7;
-  c.polarRotateSpeed = cenital ? 0 : 0.7;
-  // SCREEN_PAN en camera-controls = desplazarse sobre el plano del suelo (como un mapa)
-  c.mouseButtons.left = ACTION.SCREEN_PAN;
-  c.mouseButtons.right = cenital ? ACTION.SCREEN_PAN : ACTION.ROTATE;
-  c.mouseButtons.middle = ACTION.DOLLY;
-  c.mouseButtons.wheel = ACTION.DOLLY;
-  c.touches.one = ACTION.TOUCH_SCREEN_PAN;
-  c.touches.two = cenital ? ACTION.TOUCH_DOLLY_TRUCK : ACTION.TOUCH_DOLLY_ROTATE; // en cenital, truck = sobre el suelo
-  c.touches.three = cenital ? ACTION.TOUCH_SCREEN_PAN : ACTION.TOUCH_ROTATE;
-}
-
-/** El punto de mira no sale de la caja (x, z) del terreno de contexto. */
-export function limitarA(c: Controles, x0: number, z0: number, x1: number, z1: number) {
-  c.setBoundary(new Box3(new Vector3(x0, -1e6, z0), new Vector3(x1, 1e6, z1)));
-}
+export const LIMITES = { minDistancia: 180, maxDistancia: 70_000, maxPolar: 1.5, minPolar: 0.002, despeje: 45 };
 
 /**
- * Con el ratón, girar exige el botón derecho (incómodo en un trackpad): manteniendo Mayús, Alt,
- * Ctrl o ⌘, el botón izquierdo también gira. En cenital no se gira.
+ * Órbita baja sobre la zona de estudio: el punto donde se cambia entre el globo y el terreno. Las
+ * dos escenas muestran desde ahí lo mismo (la región de Gale desde ~100 km, norte arriba, casi a
+ * plomo), así que el cambio es un fundido entre dos vistas iguales.
  */
-export function girarConIzquierdo(c: Controles, girar: boolean, cenital: boolean) {
-  c.mouseButtons.left = girar && !cenital ? ACTION.ROTATE : ACTION.SCREEN_PAN;
-}
-
-/** La cámara no atraviesa estas mallas (el terreno, con su corte de rayos rápido). */
-export function ponerColision(c: Controles, mallas: Object3D[]) {
-  c.colliderMeshes = mallas;
-}
+export const ORBITA = { r: 100_000, phi: 0.16, theta: 0 };

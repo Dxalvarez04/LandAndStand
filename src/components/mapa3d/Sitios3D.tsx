@@ -9,6 +9,9 @@
  *   ◎ puntos de referencia de Curiosity (T1–T6): anillo hueco y texto más apagado, sin ámbar (no son
  *     metas, solo orientan); al tocarlos se ve lo que fotografió Curiosity
  * También la retícula de la selección, apoyada en el suelo.
+ *
+ * Cada texto lleva `data-rotulo` con su prioridad: cuando se juntan en pantalla (vista inclinada), se
+ * ve el de más prioridad y de los demás queda la marca (lib/mapa3d/rotulos.ts).
  */
 import { Html, Line } from "@react-three/drei";
 import { memo, useMemo } from "react";
@@ -43,6 +46,10 @@ const TRANSFORMA = {
   abajo: `translate(-50%, -${MEDIO_ALTO}px)`,
 };
 const DISPOSICION = { izq: "flex-row-reverse", der: "", abajo: "flex-col gap-0.5" };
+/** Prioridad de cada rótulo cuando se pisan: hábitat, selección, destinos (antes los probables) y referencias */
+const PRIORIDAD = { habitat: 100, nuevo: 95, seleccion: 90, destinoProbable: 55, destino: 50, referencia: 20 };
+const TEXTO_ROTULO = "transition-opacity duration-200";
+const MARCA = "pointer-events-auto shrink-0";
 
 const ladoPropio = (id: string, compacto: boolean) => (compacto ? LADO_COMPACTO[id] : LADO[id]) ?? "der";
 
@@ -157,7 +164,9 @@ function Sitios3D({
       <Line points={[[h.x, h.y, h.z], [h.x, h.y + POSTE, h.z]]} color="#ffffff" lineWidth={1.2} transparent opacity={0.85} />
       <Html position={[h.x, h.y + POSTE, h.z]} center zIndexRange={Z_ETIQUETAS} style={{ pointerEvents: "none" }}>
         <div className={`flex flex-col items-center ${SOMBRA}`} style={aparecer(visibles)}>
-          <span className="mb-0.5 whitespace-nowrap text-[13px] font-medium text-white">{t.habitat}</span>
+          <span data-rotulo={PRIORIDAD.habitat} className="mb-0.5 whitespace-nowrap text-[13px] font-medium text-white">
+            {t.habitat}
+          </span>
           <svg width="16" height="14" viewBox="0 0 16 14" aria-hidden className="[filter:drop-shadow(0_0_2px_rgba(6,10,23,1))]">
             <path d="M8 1 L15 13 L1 13 Z" fill="#ffffff" stroke="#060a17" strokeWidth="1.5" strokeLinejoin="round" />
           </svg>
@@ -184,10 +193,12 @@ function Sitios3D({
                 style={aparecer(visibles, compacto ? "translate(-50%, -50%)" : TRANSFORMA[LADO[s.id]])}
                 className={`group flex items-center gap-1.5 whitespace-nowrap rounded-[3px] outline-none focus-visible:ring-1 focus-visible:ring-white/70 ${compacto ? "p-2.5" : `px-1.5 py-1 ${DISPOSICION[LADO[s.id]]}`} ${SOMBRA}`}
               >
-                <MarcaReferencia activo={sel} />
+                <span className={MARCA}>
+                  <MarcaReferencia activo={sel} />
+                </span>
                 {/* En pantallas estrechas, solo el anillo: el nombre y la foto salen al tocarlo */}
                 {!compacto && (
-                  <span className="flex items-baseline gap-1.5">
+                  <span data-rotulo={sel ? PRIORIDAD.seleccion : PRIORIDAD.referencia} className={`flex items-baseline gap-1.5 ${TEXTO_ROTULO}`}>
                     <span className="text-[13px] text-[#d9dfee] group-hover:underline">{s.nombre}</span>
                     {p !== undefined && <span className={`${CIFRA} text-[12px] text-[#b9c6e6]`}>{pct(p)}</span>}
                   </span>
@@ -224,8 +235,13 @@ function Sitios3D({
                 style={aparecer(visibles, TRANSFORMA[ladoPropio(s.id, compacto)])}
                 className={`group flex items-center gap-1.5 whitespace-nowrap rounded-[3px] px-1 py-1 outline-none focus-visible:ring-1 focus-visible:ring-white/70 ${DISPOSICION[ladoPropio(s.id, compacto)]} ${SOMBRA}`}
               >
-                {s.propuesto ? <Punto relleno={alcance ? "#ffcf70" : "#ffffff"} sel={sel} /> : <Rombo relleno={alcance ? "#ffcf70" : "#ffffff"} sel={sel} />}
-                <span className="flex items-baseline gap-1.5">
+                <span className={MARCA}>
+                  {s.propuesto ? <Punto relleno={alcance ? "#ffcf70" : "#ffffff"} sel={sel} /> : <Rombo relleno={alcance ? "#ffcf70" : "#ffffff"} sel={sel} />}
+                </span>
+                <span
+                  data-rotulo={sel ? PRIORIDAD.seleccion : alcance ? PRIORIDAD.destinoProbable : PRIORIDAD.destino}
+                  className={`flex items-baseline gap-1.5 ${TEXTO_ROTULO}`}
+                >
                   <span className={`${CIFRA} text-[11.5px] text-[#b9c6e6]`}>{s.id}</span>
                   {!compacto && <span className="max-w-[11rem] truncate text-[13.5px] text-white group-hover:underline">{s.nombre}</span>}
                   {p !== undefined && (
@@ -256,7 +272,7 @@ function Sitios3D({
               className={`flex items-center gap-1.5 whitespace-nowrap ${SOMBRA}`}
             >
               <Rombo relleno="#ff8fd8" sel={false} hueco />
-              <span className="leading-tight">
+              <span data-rotulo={PRIORIDAD.nuevo} className="leading-tight">
                 <span className="flex items-baseline gap-1.5">
                   <span className="text-[13.5px] font-medium text-[#ff8fd8]">{t.destinoNuevo}</span>
                   {pNuevo !== undefined && <span className={`${CIFRA} text-[12.5px] text-white`}>{pct(pNuevo)}</span>}

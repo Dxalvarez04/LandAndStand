@@ -12,6 +12,13 @@ export function ajustarCamara(c: PerspectiveCamera, near: number, far: number, f
   c.updateProjectionMatrix();
 }
 
+/** Cambia los planos de corte sin tocar el resto de la proyección (ni el desplazamiento de la vista). */
+export function planosDeCorte(c: PerspectiveCamera, near: number, far: number) {
+  c.near = near;
+  c.far = far;
+  c.updateProjectionMatrix();
+}
+
 /** sRGB y, si ya estaba subida a la GPU como lineal (drei sube las texturas al cargarlas), vuelve a subirla. */
 export function ponerSRGB(...ts: Texture[]) {
   for (const t of ts) {

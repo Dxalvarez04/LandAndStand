@@ -5,13 +5,18 @@
  *   - color: mosaico Viking MDIM 2.1 (USGS), 4K y, en escritorio, 8K cuando termina de cargar;
  *   - relieve: normales del DEM MOLA (relieve ×6 solo en el sombreado);
  *   - atmósfera: capa fina, ocre de día y azulada en el terminador (en Marte los atardeceres son azules);
- *   - región de Gale en relieve (DEM HRSC-MOLA 200 m, ×3) con su imagen, fundida con el globo;
+ *   - región de Gale en relieve (DEM HRSC-MOLA 200 m, ×3) con su imagen (mosaico CTX coloreado),
+ *     fundida con el globo;
  *   - estrellas y sol lejano.
- * Al descender, la cámara baja hasta ~150 km sobre Gale y avisa (onLlegada) para pasar al terreno.
+ *
+ * Descenso y regreso: la cámara baja hasta la órbita baja sobre la zona de estudio (~100 km, casi a
+ * plomo, norte arriba) y avisa (onLlegada). El terreno empieza exactamente en esa vista, así que el
+ * cambio de escena es un fundido entre dos imágenes iguales. Al volver, el globo empieza ahí
+ * (desdeOrbita) y se aleja hasta la vista de inicio.
  */
 import { CameraControls, CameraControlsImpl, Html, Stars, useTexture } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type Ref } from "react";
 import {
   AdditiveBlending,
   BackSide,
@@ -21,6 +26,8 @@ import {
   MeshStandardMaterial,
   ShaderMaterial,
   SRGBColorSpace,
+  type AmbientLight,
+  type DirectionalLight,
   TextureLoader,
   Vector2,
   Vector3,
@@ -29,6 +36,7 @@ import {
 } from "three";
 import { R_MARTE } from "@/lib/constants";
 import { cargarAlturasGale, type AlturasGale } from "@/lib/mapa3d/alturas";
+import { ORBITA, suave } from "@/lib/mapa3d/camara";
 import { GALE, latLonAVector, ZONA } from "@/lib/mapa3d/coordenadas";
 import { ajustarCamara, ponerSRGB } from "@/lib/mapa3d/imperativo";
 import { useIdioma } from "@/lib/i18n";
@@ -39,7 +47,28 @@ const LINEA = { alto: 78, ancho: 26 };
 const COLOR_CREPUSCULO = new Color("#7d9cc6");
 
 const vec = (lat: number, lon: number, r = 1) => new Vector3(...latLonAVector(lat, lon, r));
-const ease = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+/** Duración (ms) del descenso hasta la órbita baja y del regreso desde ella */
+const DUR = { descenso: 2600, regreso: 2400 };
+/** Relieve de la región de Gale sobre el globo (×3 para que se lea desde lejos) */
+const EXAGERACION = 3;
+/** Luz y color de la región de Gale en la órbita baja: los de la escena del terreno vista desde ahí */
+const LUZ_ORBITA = { tinte: 1.0, ambiente: 1.1, sol: 2.6 };
+
+/**
+ * Órbita baja sobre la zona de estudio, en unidades del globo: la misma vista que ORBITA en la
+ * escena del terreno (cámara al sur del punto de mira, mirando al norte y casi a plomo).
+ */
+function orbitaBaja(alturaZona: number) {
+  const z = vec(ZONA.lat, ZONA.lon).normalize();
+  const norte = new Vector3(0, 1, 0).sub(z.clone().multiplyScalar(z.y)).normalize();
+  const mira = z.clone().multiplyScalar(1 + alturaZona / R_MARTE);
+  const d = ORBITA.r / R_MARTE;
+  const pos = mira
+    .clone()
+    .addScaledVector(z, d * Math.cos(ORBITA.phi))
+    .addScaledVector(norte, -d * Math.sin(ORBITA.phi));
+  return { pos, mira };
+}
 
 /** Posición inicial de la cámara y dirección del sol (Gale iluminado, terminador a la derecha). */
 function encuadre() {
@@ -123,11 +152,14 @@ function useMaterialPlaneta(color: Texture, normal: Texture, sol: Vector3) {
   }, [color, normal, sol]);
 }
 
-/** Región de Gale en relieve sobre el globo, con los bordes fundidos (altura y opacidad → 0). */
-function ParcheGale({ datos, textura }: { datos: AlturasGale; textura: Texture }) {
+/**
+ * Región de Gale en relieve sobre el globo, con los bordes fundidos (altura y opacidad → 0).
+ * `materialRef`: al acercarse a la órbita baja se le quita el tinte (ver `acercar`).
+ */
+function ParcheGale({ datos, textura, materialRef }: { datos: AlturasGale; textura: Texture; materialRef: Ref<MeshStandardMaterial> }) {
   const geometria = useMemo(() => {
     const S = 160;
-    const exag = 3;
+    const exag = EXAGERACION;
     const pos = new Float32Array((S + 1) * (S + 1) * 3);
     const uv = new Float32Array((S + 1) * (S + 1) * 2);
     const col = new Float32Array((S + 1) * (S + 1) * 4);
@@ -175,29 +207,41 @@ function ParcheGale({ datos, textura }: { datos: AlturasGale; textura: Texture }
     ponerSRGB(textura);
     return textura;
   }, [textura]);
+  // La imagen lleva la paleta del terreno (HiRISE); el tinte la iguala al color del globo (MDIM)
+  const tinte = useMemo(() => new Color().setRGB(...datos.tinteGlobo), [datos]);
   return (
     <mesh geometry={geometria}>
-      <meshStandardMaterial map={mapa} vertexColors transparent roughness={1} metalness={0} depthWrite={false} />
+      <meshStandardMaterial ref={materialRef} map={mapa} color={tinte} vertexColors transparent roughness={1} metalness={0} depthWrite={false} />
     </mesh>
   );
 }
 
 interface Props {
   descendiendo: boolean;
+  /** Se entra desde el terreno: empieza en la órbita baja y se aleja hasta la vista de inicio */
+  desdeOrbita: boolean;
   hd: boolean;
   reducido: boolean;
+  /** Imagen de la región de Gale a más resolución, si ya ha cargado */
+  galeHd: Texture | null;
   onLlegada: () => void;
   onIrAGale: () => void;
+  /** La escena ya se ve (primeros fotogramas dibujados) */
+  onLista: () => void;
+  /** El globo ya se puede girar (al empezar, o al terminar el regreso) */
+  onReposo: () => void;
   mostrarMarca: boolean;
 }
 
-export default function EscenaGlobo({ descendiendo, hd, reducido, onLlegada, onIrAGale, mostrarMarca }: Props) {
+export default function EscenaGlobo({ descendiendo, desdeOrbita, hd, reducido, galeHd, onLlegada, onIrAGale, onLista, onReposo, mostrarMarca }: Props) {
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
   // Los textos se calculan aquí: el contenido de <Html> vive en otra raíz de React
   const { t } = useIdioma();
   const [color4k, normal, galeColor] = useTexture(["/data/3d/marte_4k.jpg", "/data/3d/marte_normal_2k.jpg", "/data/3d/gale_color.jpg"]);
   const [color8k, setColor8k] = useState<Texture | null>(null);
   const [gale, setGale] = useState<AlturasGale | null>(null);
+  // Regreso desde el terreno: se decide al montar
+  const [regresando, setRegresando] = useState(desdeOrbita && !reducido);
   const { camara: inicio, sol } = useMemo(() => encuadre(), []);
   const material = useMaterialPlaneta(color8k ?? color4k, normal, sol);
 
@@ -223,6 +267,19 @@ export default function EscenaGlobo({ descendiendo, hd, reducido, onLlegada, onI
     ajustarCamara(camera, 0.002, 400);
   }, [camera]);
 
+  // Órbita baja sobre la zona: su suelo es el del relieve de Gale tal como se pinta en el globo
+  const orbita = useMemo(() => {
+    let altura = 40;
+    if (gale) {
+      const u = (ZONA.lon - gale.lon[0]) / (gale.lon[1] - gale.lon[0]);
+      const v = (gale.lat[1] - ZONA.lat) / (gale.lat[1] - gale.lat[0]);
+      const px = Math.min(gale.ancho - 1, Math.max(0, Math.round(u * (gale.ancho - 1))));
+      const py = Math.min(gale.alto - 1, Math.max(0, Math.round(v * (gale.alto - 1))));
+      altura += (gale.datos[py * gale.ancho + px] - gale.min) * EXAGERACION;
+    }
+    return orbitaBaja(altura);
+  }, [gale]);
+
   // ---- Controles: giro y zoom amortiguados; más lentos cuanto más cerca (el suelo no «patina») ----
   const controles = useRef<CameraControlsImpl>(null);
   useEffect(() => {
@@ -244,32 +301,55 @@ export default function EscenaGlobo({ descendiendo, hd, reducido, onLlegada, onI
     void c.setLookAt(inicio.x, inicio.y, inicio.z, 0, 0, 0, false);
   }, [inicio]);
 
-  // ---- Descenso ----
-  const vuelo = useRef<{ t0: number; p0: Vector3; llegado: boolean } | null>(null);
+  // ---- Vuelos: descenso hasta la órbita baja y regreso desde ella ----
+  // `lejos` es la vista desde la que se baja (o a la que se vuelve); el avance va de 0 (lejos) a 1 (órbita)
+  const vuelo = useRef<{ t0: number; dur: number; lejos: Vector3; sentido: 1 | -1; hecho: boolean } | null>(null);
   useEffect(() => {
-    if (!descendiendo) {
-      vuelo.current = null;
-      return;
-    }
-    if (reducido) {
-      onLlegada();
-      return;
-    }
+    if (!descendiendo) return;
+    if (reducido) return onLlegada();
     controles.current?.stop();
-    vuelo.current = { t0: performance.now(), p0: camera.position.clone(), llegado: false };
+    vuelo.current = { t0: performance.now(), dur: DUR.descenso, lejos: camera.position.clone(), sentido: 1, hecho: false };
   }, [descendiendo, reducido, camera, onLlegada]);
 
-  const destino = useMemo(() => {
-    const z = vec(ZONA.lat, ZONA.lon).normalize();
-    const norte = new Vector3(0, 1, 0).sub(z.clone().multiplyScalar(z.y)).normalize();
-    return { pos: z.clone().multiplyScalar(1.045).add(norte.multiplyScalar(-0.05)), mira: z.clone().multiplyScalar(1.0) };
-  }, []);
+  // Cerca de la órbita baja la región de Gale llena la vista: se le quita el tinte del globo y se
+  // rellenan las sombras con luz ambiente, hasta verse como en la escena del terreno (misma imagen,
+  // mismo sol). Así el fundido entre las dos escenas no cambia de color ni de contraste.
+  const parche = useRef<MeshStandardMaterial>(null);
+  const ambiente = useRef<AmbientLight>(null);
+  const solRef = useRef<DirectionalLight>(null);
+  const acercar = (e: number) => {
+    const k = Math.min(1, Math.max(0, (e - 0.55) / 0.4));
+    const f = k * k * (3 - 2 * k);
+    if (parche.current && gale) {
+      const [r, g, b] = gale.tinteGlobo;
+      parche.current.color.setRGB(r + (LUZ_ORBITA.tinte - r) * f, g + (LUZ_ORBITA.tinte - g) * f, b + (LUZ_ORBITA.tinte - b) * f);
+    }
+    if (ambiente.current) ambiente.current.intensity = 0.035 + (LUZ_ORBITA.ambiente - 0.035) * f;
+    if (solRef.current) solRef.current.intensity = 3.4 + (LUZ_ORBITA.sol - 3.4) * f;
+  };
 
   const mira = useMemo(() => new Vector3(), []);
+  const dir = useMemo(() => new Vector3(), []);
+  const tmp = useMemo(() => new Vector3(), []);
+  const colocar = (lejos: Vector3, e: number) => {
+    acercar(e);
+    const c = controles.current;
+    if (!c) return;
+    // Rumbo: se llega pronto sobre Gale (así, cerca del suelo, este ya no corre por debajo).
+    // Altura: en escala logarítmica, para que el acercamiento se perciba uniforme.
+    const eRumbo = 1 - Math.pow(1 - e, 3);
+    dir.copy(lejos).normalize().lerp(tmp.copy(orbita.pos).normalize(), eRumbo).normalize();
+    const alto = Math.exp(Math.log(lejos.length() - 1) * (1 - e) + Math.log(orbita.pos.length() - 1) * e);
+    dir.multiplyScalar(1 + alto);
+    mira.copy(orbita.mira).multiplyScalar(e * e);
+    c.minDistance = 0;
+    void c.setLookAt(dir.x, dir.y, dir.z, mira.x, mira.y, mira.z, false);
+  };
+
   // Centro de la zona de estudio, pegado al suelo (el relieve de Gale apenas sube ahí: es el fondo del cráter)
   const marca = useMemo(() => vec(ZONA.lat, ZONA.lon, 1.0008), []);
   const marcaRef = useRef<HTMLDivElement>(null);
-  const tmp = useMemo(() => new Vector3(), []);
+  const fotogramas = useRef(0);
   useFrame((estado) => {
     // La marca de Gale solo se ve en la cara del globo que mira a la cámara
     const b = marcaRef.current;
@@ -283,45 +363,53 @@ export default function EscenaGlobo({ descendiendo, hd, reducido, onLlegada, onI
       const cerca = Math.min(1, Math.max(0, (c.distance - 1.2) / 2.2));
       c.azimuthRotateSpeed = c.polarRotateSpeed = 0.12 + 0.38 * cerca;
     }
+
+    // Primeros fotogramas: la escena ya se ve. Si se viene del terreno, empieza el regreso.
+    if (fotogramas.current < 3) {
+      if (regresando) colocar(inicio, 1);
+      if (++fotogramas.current === 3) {
+        onLista();
+        if (regresando) vuelo.current = { t0: performance.now(), dur: DUR.regreso, lejos: inicio.clone(), sentido: -1, hecho: false };
+        else onReposo();
+      }
+      return;
+    }
+
     const v = vuelo.current;
-    if (!v) return;
-    const DUR = 2300;
-    const k = Math.min(1, (performance.now() - v.t0) / DUR);
-    const e = ease(k);
-    // Dirección por la esfera y distancia que baja más rápido al final
-    const d0 = v.p0.length();
-    const d1 = destino.pos.length();
-    const dir = v.p0.clone().normalize().lerp(destino.pos.clone().normalize(), e).normalize();
-    const dist = d1 + (d0 - d1) * Math.pow(1 - e, 2.2);
-    const pos = dir.multiplyScalar(dist);
-    mira.lerpVectors(new Vector3(0, 0, 0), destino.mira, Math.min(1, e * 1.4));
+    if (!v || v.hecho) return;
+    const k = Math.min(1, (performance.now() - v.t0) / v.dur);
+    colocar(v.lejos, v.sentido === 1 ? suave(k) : 1 - suave(k));
+    if (k < 1) return;
+    v.hecho = true;
+    if (v.sentido === 1) return onLlegada();
+    // Regreso terminado: el globo vuelve a girarse a mano
+    acercar(0);
     if (c) {
-      c.minDistance = 0;
-      void c.setLookAt(pos.x, pos.y, pos.z, mira.x, mira.y, mira.z, false);
+      c.minDistance = 1.25;
+      void c.setLookAt(inicio.x, inicio.y, inicio.z, 0, 0, 0, false);
     }
-    if (k >= 0.9 && !v.llegado) {
-      v.llegado = true;
-      onLlegada();
-    }
+    vuelo.current = null;
+    setRegresando(false);
+    onReposo();
   });
 
   return (
     <>
       <color attach="background" args={["#000000"]} />
-      <ambientLight intensity={0.035} />
-      <directionalLight position={sol.clone().multiplyScalar(10).toArray()} intensity={3.4} color="#fff4e8" />
+      <ambientLight ref={ambiente} intensity={0.035} />
+      <directionalLight ref={solRef} position={sol.clone().multiplyScalar(10).toArray()} intensity={3.4} color="#fff4e8" />
       <Stars radius={120} depth={60} count={6000} factor={3} saturation={0} fade speed={0} />
       <mesh material={material}>
         <sphereGeometry args={[1, 256, 128]} />
       </mesh>
-      {gale && <ParcheGale datos={gale} textura={galeColor} />}
+      {gale && <ParcheGale datos={gale} textura={galeHd ?? galeColor} materialRef={parche} />}
       <Atmosfera sol={sol} />
 
       {/*
         Rótulo con línea guía: el punto está justo sobre la zona de estudio; de él sube una línea fina
         que dobla hacia el nombre. Tocar el nombre (o el punto) baja a la zona de estudio.
       */}
-      {mostrarMarca && !descendiendo && (
+      {mostrarMarca && !descendiendo && !regresando && (
         <Html position={marca.toArray()} zIndexRange={[20, 10]}>
           <div ref={marcaRef} className="relative h-0 w-0 transition-opacity duration-300">
             <svg
@@ -369,7 +457,7 @@ export default function EscenaGlobo({ descendiendo, hd, reducido, onLlegada, onI
         </Html>
       )}
 
-      <CameraControls ref={controles} makeDefault enabled={!descendiendo} />
+      <CameraControls ref={controles} makeDefault enabled={!descendiendo && !regresando} />
     </>
   );
 }

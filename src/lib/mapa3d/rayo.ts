@@ -73,3 +73,55 @@ export function cortarRelieve(a: Alturas, zRef: number, origen: V3, dir: V3, tMi
     if (t >= t1) return null;
   }
 }
+
+const MAX_PASOS_SUPERFICIE = 1500;
+
+/**
+ * Corte de un rayo con una superficie cualquiera y = altura(x, z), en coordenadas de escena. Para
+ * anclar los gestos de la cámara al suelo también fuera de la zona (entorno y región), donde no hace
+ * falta la exactitud de `cortarRelieve`: avanza más cuanto más alto va el rayo sobre el suelo y con
+ * el paso que da `resolucion` en cada sitio. Solo cuenta la entrada desde arriba.
+ */
+export function cortarSuperficie(
+  altura: (x: number, z: number) => number,
+  resolucion: (x: number, z: number) => number,
+  origen: V3,
+  dir: V3,
+  tMax: number,
+  yMax: number,
+): number | null {
+  let t = 0;
+  if (origen.y > yMax) {
+    if (dir.y >= 0) return null;
+    t = (yMax - origen.y) / dir.y;
+    if (t >= tMax) return null;
+  }
+  const horizontal = Math.max(Math.hypot(dir.x, dir.z), 0.02);
+  const sobre = (s: number) => origen.y + dir.y * s - altura(origen.x + dir.x * s, origen.z + dir.z * s);
+  let tAnt = t;
+  let f = sobre(t);
+  let encima = f >= 0;
+  for (let i = 0; i < MAX_PASOS_SUPERFICIE; i++) {
+    if (dir.y > 0 && origen.y + dir.y * t > yMax) return null;
+    const res = resolucion(origen.x + dir.x * t, origen.z + dir.z * t);
+    const paso = Math.max((0.5 * res) / horizontal, encima ? 0.45 * f : 0);
+    const s = Math.min(t + paso, tMax);
+    const fs = sobre(s);
+    if (encima && fs < 0) {
+      let a0 = tAnt;
+      let a1 = s;
+      for (let k = 0; k < BISECCIONES; k++) {
+        const m = (a0 + a1) / 2;
+        if (sobre(m) >= 0) a0 = m;
+        else a1 = m;
+      }
+      return (a0 + a1) / 2;
+    }
+    if (fs >= 0) encima = true;
+    tAnt = s;
+    t = s;
+    f = fs;
+    if (s >= tMax) return null;
+  }
+  return null;
+}

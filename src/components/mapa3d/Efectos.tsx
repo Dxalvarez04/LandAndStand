@@ -6,15 +6,16 @@
  * aplica ACES directamente.
  */
 import { Bloom, EffectComposer, N8AO, SMAA, ToneMapping, Vignette } from "@react-three/postprocessing";
-import { ToneMappingMode } from "postprocessing";
-import { memo } from "react";
+import { ToneMappingMode, type EffectComposer as Compositor } from "postprocessing";
+import { memo, type Ref } from "react";
 
-function Efectos({ terreno }: { terreno: boolean }) {
+/** `compositor`: para volver a dibujar un fotograma a mano (la imagen fija del cambio de escena). */
+function Efectos({ terreno, compositor }: { terreno: boolean; compositor?: Ref<Compositor | null> }) {
   return (
-    <EffectComposer multisampling={0} enableNormalPass={false}>
-      {terreno && <N8AO aoRadius={45} intensity={1.6} distanceFalloff={0.6} halfRes quality="medium" />}
-      <Bloom intensity={terreno ? 0.18 : 0.35} luminanceThreshold={0.82} luminanceSmoothing={0.2} mipmapBlur />
-      <Vignette offset={0.32} darkness={terreno ? 0.42 : 0.6} />
+    <EffectComposer ref={compositor} multisampling={0} enableNormalPass={false}>
+      {terreno && <N8AO aoRadius={45} intensity={1.4} distanceFalloff={0.6} halfRes quality="medium" />}
+      <Bloom intensity={terreno ? 0.14 : 0.35} luminanceThreshold={0.85} luminanceSmoothing={0.2} mipmapBlur />
+      <Vignette offset={0.3} darkness={terreno ? 0.3 : 0.6} />
       <SMAA />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
     </EffectComposer>

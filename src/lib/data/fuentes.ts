@@ -5,7 +5,7 @@
  */
 
 export interface FuenteOficial {
-  id: "terreno" | "imagen" | "posiciones" | "fotos" | "globo" | "relieveGlobo" | "relieveGale";
+  id: "terreno" | "imagen" | "entorno" | "region" | "posiciones" | "fotos" | "globo" | "relieveGlobo" | "relieveGale";
   /** Para qué se usa en el mapa */
   uso: string;
   /** Nombre oficial del producto */
@@ -30,14 +30,14 @@ export const FUENTES: FuenteOficial[] = [
     producto: "Mars MSL Gale Merged DEM 1m (v3)",
     autoria: "Timothy Parker y Fred J. Calef III · USGS Astrogeology Science Center, 20/10/2016",
     detalle:
-      "Modelo de elevación a 1 m/px creado por el equipo de la MSL para evaluar el aterrizaje en Gale. Une modelos HRSC, CTX y HiRISE ajustados al altímetro MOLA. Aquí se reduce a celdas de 32 m.",
+      "Modelo de elevación a 1 m/px creado por el equipo de la MSL para evaluar el aterrizaje en Gale. Une modelos HRSC, CTX y HiRISE ajustados al altímetro MOLA. Para el cálculo se reduce a celdas de 32 m; el relieve 3D lo usa a 16 m en la zona y a 64 m en su entorno (33 × 57 km).",
     credito: "USGS Astrogeology, MSL Gale Merged DEM 1 m v3 (Calef y Parker, 2016)",
     url: "https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m",
     sitio: "USGS Astropedia",
      en: {
       uso: "Terrain: slopes, distances and relief",
       autoria: "Timothy Parker and Fred J. Calef III · USGS Astrogeology Science Center, 2016-10-20",
-      detalle: "1 m/px elevation model made by the MSL team to assess landing in Gale. It merges HRSC, CTX and HiRISE models adjusted to the MOLA altimeter. Here it is reduced to 32 m cells.",
+      detalle: "1 m/px elevation model made by the MSL team to assess landing in Gale. It merges HRSC, CTX and HiRISE models adjusted to the MOLA altimeter. The computation uses it reduced to 32 m cells; the 3D relief uses it at 16 m in the study area and at 64 m around it (33 × 57 km).",
       credito: "USGS Astrogeology, MSL Gale Merged DEM 1 m v3 (Calef and Parker, 2016)",
     },
   },
@@ -48,7 +48,7 @@ export const FUENTES: FuenteOficial[] = [
     autoria:
       "USGS Astrogeology Science Center, julio de 2025 · fusionado con el MSL Gale Merged Orthophoto Mosaic 25cm (Calef y Parker, 2016)",
     detalle:
-      "Tiras en color de HiRISE (Mars Reconnaissance Orbiter) georrectificadas y fusionadas con el ortomosaico HiRISE de la misión, a 25 cm/px. Se recorta a la zona de estudio con el norte arriba.",
+      "Tiras en color de HiRISE (Mars Reconnaissance Orbiter) georrectificadas y fusionadas con el ortomosaico HiRISE de la misión, a 25 cm/px. Se recorta a la zona de estudio con el norte arriba. Las franjas que el mosaico trae en gris (sin tira en color) se colorean con su propia paleta.",
     credito: "HiRISE, NASA/JPL-Caltech/University of Arizona",
     url: "https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_orthophoto_mosaic_25cm",
     sitio: "USGS Astropedia",
@@ -56,7 +56,42 @@ export const FUENTES: FuenteOficial[] = [
       uso: "Background image",
       producto: "Gale HiRISE color mosaic (78 quads, 25 cm)",
       autoria: "USGS Astrogeology Science Center, July 2025 · merged with the MSL Gale Merged Orthophoto Mosaic 25cm (Calef and Parker, 2016)",
-      detalle: "HiRISE color strips (Mars Reconnaissance Orbiter) georectified and merged with the mission's HiRISE orthomosaic, at 25 cm/px. Clipped to the study area with north up.",
+      detalle: "HiRISE color strips (Mars Reconnaissance Orbiter) georectified and merged with the mission's HiRISE orthomosaic, at 25 cm/px. Clipped to the study area with north up. The strips the mosaic has in gray (no color strip) are colorized with its own palette.",
+    },
+  },
+  {
+    id: "entorno",
+    uso: "Entorno de la zona en el 3D: imagen",
+    producto: "MSL Gale Merged Orthophoto Mosaic 25cm (v3)",
+    autoria: "Fred J. Calef III y Timothy Parker · USGS Astrogeology Science Center, 2016",
+    detalle:
+      "Ortomosaico en blanco y negro (HiRISE y CTX) de toda el área de la misión. Se muestra a 16 m/px alrededor de la zona de estudio (33 × 57 km), coloreado con la paleta del mosaico HiRISE en color: el color es aproximado, no medido. Solo sirve de contexto visual; no entra en ningún cálculo.",
+    credito: "USGS Astrogeology, MSL Gale Merged Orthophoto Mosaic 25 cm v3 (Calef y Parker, 2016) · NASA/JPL-Caltech/University of Arizona/MSSS",
+    url: "https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_orthophoto_mosaic_25cm",
+    sitio: "USGS Astropedia",
+    en: {
+      uso: "Surroundings of the study area in 3D: image",
+      autoria: "Fred J. Calef III and Timothy Parker · USGS Astrogeology Science Center, 2016",
+      detalle: "Black-and-white orthomosaic (HiRISE and CTX) of the whole mission area. Shown at 16 m/px around the study area (33 × 57 km), colorized with the palette of the HiRISE color mosaic: the color is approximate, not measured. Visual context only; it is not used in any computation.",
+      credito: "USGS Astrogeology, MSL Gale Merged Orthophoto Mosaic 25 cm v3 (Calef and Parker, 2016) · NASA/JPL-Caltech/University of Arizona/MSSS",
+    },
+  },
+  {
+    id: "region",
+    uso: "Región de Gale: imagen (en el globo y en el horizonte del 3D)",
+    producto: "Mars CTX Controlled Equatorial Mosaics, 6 m/px · cuadrángulo MC-23 (Aeolis)",
+    autoria: "S. J. Robbins y colaboradores · distribuido por el USGS Astrogeology Science Center",
+    detalle:
+      "Mosaico controlado de imágenes de la cámara CTX (Mars Reconnaissance Orbiter). Se usa reducido (≈ 60 m/px) para los 4° × 4° alrededor de Gale, coloreado con la paleta del mosaico HiRISE en color: el color es aproximado, no medido. Solo contexto visual; no entra en ningún cálculo.",
+    credito: "CTX: NASA/JPL-Caltech/MSSS · mosaico controlado de Robbins et al., USGS Astrogeology",
+    url: "https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/Mars_MRO_CTX_Equi_Mosaics_Robbins/index.html",
+    sitio: "USGS · Mars CTX Controlled Equatorial Mosaics",
+    en: {
+      uso: "Gale region: image (on the globe and on the 3D horizon)",
+      producto: "Mars CTX Controlled Equatorial Mosaics, 6 m/px · quadrangle MC-23 (Aeolis)",
+      autoria: "S. J. Robbins and colleagues · distributed by the USGS Astrogeology Science Center",
+      detalle: "Controlled mosaic of images from the CTX camera (Mars Reconnaissance Orbiter). Used reduced (≈ 60 m/px) for the 4° × 4° around Gale, colorized with the palette of the HiRISE color mosaic: the color is approximate, not measured. Visual context only; it is not used in any computation.",
+      credito: "CTX: NASA/JPL-Caltech/MSSS · controlled mosaic by Robbins et al., USGS Astrogeology",
     },
   },
   {
@@ -100,7 +135,7 @@ export const FUENTES: FuenteOficial[] = [
     producto: "Mars Viking Colorized Global Mosaic 232m (MDIM 2.1 en color)",
     autoria: "NASA Ames · USGS Astrogeology Science Center, 02/02/2009",
     detalle:
-      "Mosaico global de las sondas Viking, versión coloreada del MDIM 2.1 controlado. Se usa reducido (4K y 8K) para el globo y, a más detalle, para la región de Gale. Leído del servicio de mapas del USGS.",
+      "Mosaico global de las sondas Viking, versión coloreada del MDIM 2.1 controlado. Se usa reducido (4K y 8K) para el globo. Leído del servicio de mapas del USGS.",
     credito: "NASA/JPL/USGS, Viking MDIM 2.1 en color",
     url: "https://astrogeology.usgs.gov/search/map/mars_viking_colorized_global_mosaic_232m",
     sitio: "USGS Astropedia",
@@ -108,7 +143,7 @@ export const FUENTES: FuenteOficial[] = [
       uso: "Mars globe: color",
       producto: "Mars Viking Colorized Global Mosaic 232m (MDIM 2.1 colorized)",
       autoria: "NASA Ames · USGS Astrogeology Science Center, 2009-02-02",
-      detalle: "Global mosaic from the Viking orbiters, colorized version of the controlled MDIM 2.1. Used reduced (4K and 8K) for the globe and, at more detail, for the Gale region. Read from the USGS map service.",
+      detalle: "Global mosaic from the Viking orbiters, colorized version of the controlled MDIM 2.1. Used reduced (4K and 8K) for the globe. Read from the USGS map service.",
       credito: "NASA/JPL/USGS, Viking MDIM 2.1 colorized",
     },
   },
@@ -129,18 +164,18 @@ export const FUENTES: FuenteOficial[] = [
   },
   {
     id: "relieveGale",
-    uso: "Región de Gale en relieve sobre el globo",
+    uso: "Región de Gale: relieve (en el globo y en el horizonte del 3D)",
     producto: "Mars MGS MOLA – MEX HRSC Blended DEM Global 200m (v2)",
     autoria: "DLR, NASA, Goddard Space Flight Center · USGS Astrogeology Science Center, 31/01/2018 (Fergason, Laura y Hare, 2017)",
     detalle:
-      "Modelo global que combina MOLA con el estéreo de HRSC (Mars Express) a 200 m/px. Da el relieve del cráter y del monte Sharp durante el descenso, exagerado ×3; no se usa para ningún cálculo.",
+      "Modelo global que combina MOLA con el estéreo de HRSC (Mars Express) a 200 m/px. Da el relieve del cráter y del monte Sharp: en el globo, exagerado ×3; en el 3D, a escala real, más allá del entorno de la zona. No se usa para ningún cálculo.",
     credito: "USGS Astrogeology, HRSC-MOLA Blended DEM 200 m v2 (Fergason et al., 2017)",
     url: "https://astrogeology.usgs.gov/search/map/mars_mgs_mola_mex_hrsc_blended_dem_global_200m",
     sitio: "USGS Astropedia",
      en: {
-      uso: "Gale region in relief on the globe",
+      uso: "Gale region: relief (on the globe and on the 3D horizon)",
       autoria: "DLR, NASA, Goddard Space Flight Center · USGS Astrogeology Science Center, 2018-01-31 (Fergason, Laura and Hare, 2017)",
-      detalle: "Global model combining MOLA with HRSC stereo (Mars Express) at 200 m/px. It gives the relief of the crater and Mount Sharp during the descent, exaggerated ×3; it is not used in any computation.",
+      detalle: "Global model combining MOLA with HRSC stereo (Mars Express) at 200 m/px. It gives the relief of the crater and Mount Sharp: on the globe, exaggerated ×3; in 3D, at true scale, beyond the surroundings of the study area. It is not used in any computation.",
     },
   },
 ];

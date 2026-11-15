@@ -4,12 +4,14 @@
  * Pantalla de la nave: fija, sin scroll de página.
  *   · Mapa (persona 2): ocupa toda la pantalla.
  *   · Panel (persona 3): flota encima, en una columna a la derecha en horizontal y en la mitad
- *     inferior en vertical (móvil). Se esconde y se saca con la pestaña de su borde.
+ *     inferior en vertical (móvil). Se esconde y se saca con la pestaña de su borde. Se lee de
+ *     arriba abajo: qué es (cabecera), la salida que se define (qué sol, quién sale, a qué ritmo)
+ *     y lo que el modelo responde para los destinos de la misión.
  *
  * El panel no redimensiona el mapa (redimensionar el lienzo 3D en cada fotograma de la animación
  * sería caro): el mapa aparta sus controles y desplaza el centro de la vista (`hueco`).
  *
- * En la nave el panel debe caber entero en su columna (≈ 420 px × alto de pantalla) para que no
+ * En la nave el panel debe caber entero en su columna (≈ 440 px × alto de pantalla) para que no
  * aparezca ninguna barra. En pantallas pequeñas (móvil) el panel se desplaza por dentro.
  *
  * En el globo de Marte y durante el descenso solo se ve el mapa: el panel entra cuando la cámara ya
@@ -26,6 +28,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import dynamic from "next/dynamic";
 import type { Estado } from "@/lib/contract";
 import { useModelo } from "@/hooks/useModelo";
+import Cabecera from "@/components/panel/Cabecera";
 import DeslizadorSol from "@/components/panel/DeslizadorSol";
 import SelectorCaminante from "@/components/panel/SelectorCaminante";
 import SelectorEscenario from "@/components/panel/SelectorEscenario";
@@ -100,6 +103,8 @@ export default function Home() {
   // Al añadir un punto de referencia se proponen su nombre y lo que se estudió allí
   const [sugerencia, setSugerencia] = useState<{ nombre: string; tareas: string[] } | null>(null);
   const [enfoque, setEnfoque] = useState<{ id: string; n: number } | null>(null);
+  // Destino desplegado en el panel (la fila activa). Lo lleva la página para poder elegirlo también desde el mapa.
+  const [destinoActivo, setDestinoActivo] = useState<string | null>(null);
   const contadorDestinos = useRef(0);
   const [faseMapa, setFaseMapa] = useState<FaseMapa>("globo");
   const alCambiarFase = useCallback((f: FaseMapa) => setFaseMapa(f), []);
@@ -176,6 +181,7 @@ export default function Home() {
 
   const quitarDestino = (id: string) => {
     setDestinosMision((actuales) => actuales.filter((d) => d.id !== id));
+    setDestinoActivo((activo) => (activo === id ? null : activo));
   };
 
   const enfocarDestino = (id: string) => setEnfoque((e) => ({ id, n: (e?.n ?? 0) + 1 }));
@@ -200,6 +206,7 @@ export default function Home() {
           onElegirPuntoDestino={elegirPuntoDestino}
           onCancelarSeleccionDestino={cancelarSeleccionDestino}
           onAgregarDestino={agregarDestinoDesdeMapa}
+          onSeleccionDestino={setDestinoActivo}
           onFase={alCambiarFase}
           hueco={hueco}
           enfoque={enfoque}
@@ -209,7 +216,7 @@ export default function Home() {
       {/* ---- Zona 2 · Panel (persona 3) ---- */}
       {/* Se desliza con transform (sin recalcular el diseño); la pestaña va fuera de la parte inerte */}
       <div
-        className={`absolute inset-x-0 bottom-0 z-40 h-[40dvh] transition-transform ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none landscape:inset-x-auto landscape:right-0 landscape:top-0 landscape:h-full landscape:w-[min(420px,34vw)] ${
+        className={`absolute inset-x-0 bottom-0 z-40 h-[40dvh] transition-transform ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none landscape:inset-x-auto landscape:right-0 landscape:top-0 landscape:h-full landscape:w-[min(440px,34vw)] ${
           panelVisible
             ? "translate-x-0 translate-y-0"
             : disponible
@@ -253,18 +260,25 @@ export default function Home() {
           className="relative h-full w-full overflow-hidden border-t border-[#a0beff]/15 bg-[#0a0f1f] text-[#eaf0ff] shadow-[0_0_40px_-12px_rgba(0,0,0,0.85)] landscape:border-l landscape:border-t-0"
         >
           <BarraProgreso progreso={progreso} visible={calculando} />
-          <div className="flex h-full w-full flex-col overflow-y-auto overscroll-contain">
+          {/* @container: las piezas del panel se adaptan a su ancho, no al de la ventana */}
+          <div
+            data-panel-scroll
+            className="@container flex h-full w-full flex-col overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-color:rgba(160,190,255,0.28)_transparent] [scrollbar-width:thin]"
+          >
+            <Cabecera />
             {error && (
-              <p className="border-b border-[#a0beff]/15 px-4 py-2 text-[12.5px] text-[#ffb4b4]">
+              <p role="alert" className="border-b border-[#a0beff]/15 px-4 py-2 text-[12.5px] text-[#ffb4b4] @[400px]:px-5">
                 {error}
               </p>
             )}
             <DeslizadorSol sol={estado.sol} onChange={(sol) => set({ sol })} />
             <SelectorCaminante
-              modo={estado.modo}
               tripulantes={estado.tripulantes}
               onModo={(modo) => set({ modo })}
               onTripulantes={(tripulantes) => set({ tripulantes })}
+              sol={estado.sol}
+              fwalk={estado.fwalk}
+              energiaHoras={estado.energiaHoras}
             />
             <SelectorEscenario
               fwalk={estado.fwalk}
@@ -273,6 +287,9 @@ export default function Home() {
             <TablaDestinos
               resultado={resultado}
               destinosMision={destinosMision}
+              activo={destinoActivo}
+              onActivo={setDestinoActivo}
+              calculando={calculando}
               sugerencia={sugerencia}
               seleccionando={seleccionandoDestino}
               puntoSeleccionado={puntoDestino}

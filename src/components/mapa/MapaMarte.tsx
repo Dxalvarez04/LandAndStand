@@ -77,6 +77,11 @@ export interface MapaMarteProps {
    * punto de referencia se sugieren su nombre y lo que se estudió allí.
    */
   onAgregarDestino?: (punto: Celda, sugerencia?: { nombre: string; tareas: string[] }) => void;
+  /**
+   * Destino de la misión seleccionado en el mapa (o null): el panel destaca y despliega su fila.
+   * Con «enfoque» forma el camino de vuelta: panel → mapa y mapa → panel.
+   */
+  onSeleccionDestino?: (id: string | null) => void;
 }
 
 const ZOOM_MAX = 8;
@@ -111,6 +116,7 @@ export default function MapaMarte({
   onAgregarDestino,
   destinosMision = [],
   enfoque = null,
+  onSeleccionDestino,
 }: MapaMarteProps) {
   const contRef = useRef<HTMLDivElement>(null);
   const zoomRef = useRef<ZoomBehavior<HTMLDivElement, unknown> | null>(null);
@@ -119,6 +125,8 @@ export default function MapaMarte({
   const { t: textos, idioma } = useIdioma();
   const [hover, setHover] = useState<{ celda: Celda; x: number; y: number } | null>(null);
   const [sel, setSel] = useState<Seleccion | null>(null);
+  const propioSel = sel?.propio ?? null;
+  useEffect(() => onSeleccionDestino?.(propioSel), [propioSel, onSeleccionDestino]);
   const [fotoAbierta, setFotoAbierta] = useState<IdDestino | null>(null);
   const [fuentesAbiertas, setFuentesAbiertas] = useState(false);
   const [pistaOcultada, setPistaOcultada] = useState(false);

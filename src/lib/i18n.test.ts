@@ -49,6 +49,17 @@ describe("idioma de la interfaz", () => {
     expect(textos(traductor("en").t).join(" ").toLowerCase()).not.toMatch(/\bsafe/);
   });
 
+  it("el panel nombra quién sale y el desnivel en los dos idiomas", () => {
+    const es = traductor("es").t;
+    const en = traductor("en").t;
+    expect([1, 2, 3, 8].map(es.salen)).toEqual(["1 persona", "Pareja", "Grupo de 3", "Grupo de 8"]);
+    expect([1, 2, 3, 8].map(en.salen)).toEqual(["1 person", "Pair", "Group of 3", "Group of 8"]);
+    expect(es.desnivelTexto(120)).toBe("120 m más alto que el hábitat");
+    expect(es.desnivelTexto(-10)).toBe("10 m más bajo que el hábitat");
+    expect(en.desnivelTexto(-10)).toBe("10 m lower than the habitat");
+    expect(en.desnivelTexto(0)).toBe("Level with the habitat");
+  });
+
   it("los datos que se muestran tienen su versión en inglés", () => {
     const conEn = [HABITAT, ZONA, ...DESTINOS, ...DESTINOS_MISION, ...PERFILES_ASTRONAUTAS, ...Object.values(FOTOS), ...FUENTES];
     for (const d of conEn) expect(d.en, JSON.stringify(d).slice(0, 60)).toBeTruthy();

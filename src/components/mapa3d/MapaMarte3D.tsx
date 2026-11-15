@@ -6,8 +6,14 @@
  *
  * Fases:
  *   globo     → Marte entero (Viking + MOLA, atmósfera, estrellas) con Gale marcado.
- *   descenso  → la cámara baja hasta Gale (empieza sola a los ~2 s; tocar «Saltar» o el globo la para).
+ *   descenso  → al tocar el rótulo de Gale, la cámara baja hasta la órbita baja sobre la zona.
  *   terreno   → la zona de estudio en 3D con la probabilidad, contornos, destinos, ruta y ficha.
+ *
+ * El cambio entre el globo y el terreno (dos escenas distintas en el mismo lienzo) se hace en la
+ * órbita baja, donde las dos muestran la misma vista: se deja encima una imagen fija del último
+ * fotograma, se cambia la escena por debajo y, cuando la nueva ya se ve, la imagen se funde. Así no
+ * hay corte ni pantalla en blanco, y el tirón de montar la escena queda oculto. La vuelta al globo
+ * es lo mismo al revés.
  *
  * Esquinas (como en el 2D): arriba izq. indicación · arriba der. controles · abajo izq. clave ·
  * abajo der. fuentes, escala (cenital) y brújula. La ficha se abre junto al punto tocado, sin tapar
@@ -18,7 +24,8 @@
  * «demand»); lo que cambia en cada fotograma va al almacén `vivo` (ver lib/mapa3d/almacen.ts).
  */
 import { useProgress, useTexture } from "@react-three/drei";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
+import type { EffectComposer as Compositor } from "postprocessing";
 import {
   Component,
   memo,
@@ -31,7 +38,9 @@ import {
   useState,
   useSyncExternalStore,
   type ReactNode,
+  type RefObject,
 } from "react";
+import { SRGBColorSpace, TextureLoader, type Texture } from "three";
 import type { IdDestino } from "@/lib/contract";
 import MapaMarte, { type MapaMarteProps } from "@/components/mapa/MapaMarte";
 import Inspector from "@/components/mapa/Inspector";
@@ -52,11 +61,13 @@ import { enIdioma, useIdioma } from "@/lib/i18n";
 import SelectorIdioma from "@/components/SelectorIdioma";
 import { DESTINOS } from "@/lib/data/targets";
 import { FOTOS } from "@/lib/data/fotos";
-import { cargarAlturas, type Alturas } from "@/lib/mapa3d/alturas";
+import { cargarAlturas, cargarAlturasGale, cargarEntorno } from "@/lib/mapa3d/alturas";
 import { crearAlmacen, estadoVivoInicial, useAlmacen, type Almacen, type EstadoVivo, type PuntoPx } from "@/lib/mapa3d/almacen";
+import { ponerAnisotropia, ponerSRGB } from "@/lib/mapa3d/imperativo";
+import { regionComoAlturas, type Relieve } from "@/lib/mapa3d/relieve";
 import { CURVA_PANEL, DURACION_PANEL, SIN_HUECO } from "@/lib/panel";
 import EscenaGlobo from "./EscenaGlobo";
-import EscenaTerreno, { type Orden, type Vista } from "./EscenaTerreno";
+import EscenaTerreno, { RUTA_NORMAL, RUTA_REGION, rutaEntorno, rutaZona, type Orden, type Vista } from "./EscenaTerreno";
 import { precalentarTerreno } from "./Terreno";
 import Efectos from "./Efectos";
 import Controles3D from "./Controles3D";
@@ -136,6 +147,46 @@ function Plano2D(props: MapaMarteProps) {
   );
 }
 
+/**
+ * Sube a la GPU las imágenes del terreno mientras se ve el globo (con su espacio de color ya puesto,
+ * para no subirlas dos veces): al bajar no hay que esperar a ninguna.
+ */
+function PrecargaTerreno({ color, otras }: { color: string[]; otras: string[] }) {
+  const gl = useThree((s) => s.gl);
+  useTexture([...color, ...otras], (ts) => {
+    const todas = Array.isArray(ts) ? ts : [ts];
+    ponerSRGB(...todas.slice(0, color.length));
+    ponerAnisotropia(gl.capabilities.getMaxAnisotropy(), ...todas);
+  });
+  return null;
+}
+
+type Captura = (destino: HTMLCanvasElement) => void;
+
+/**
+ * Deja en `registro` una función que copia en un lienzo 2D lo que se ve ahora mismo. Vuelve a
+ * dibujar el fotograma y lo copia en el mismo turno: después el navegador vacía el búfer de WebGL.
+ */
+function Capturador({ registroRef, compositorRef }: { registroRef: RefObject<Captura | null>; compositorRef: RefObject<Compositor | null> }) {
+  const gl = useThree((s) => s.gl);
+  const scene = useThree((s) => s.scene);
+  const camera = useThree((s) => s.camera);
+  useEffect(() => {
+    registroRef.current = (destino) => {
+      if (compositorRef.current) compositorRef.current.render(0);
+      else gl.render(scene, camera);
+      const origen = gl.domElement;
+      if (destino.width !== origen.width) destino.width = origen.width;
+      if (destino.height !== origen.height) destino.height = origen.height;
+      destino.getContext("2d")?.drawImage(origen, 0, 0);
+    };
+    return () => {
+      registroRef.current = null;
+    };
+  }, [registroRef, compositorRef, gl, scene, camera]);
+  return null;
+}
+
 type Fase = "globo" | "descenso" | "terreno";
 interface Seleccion {
   celda: Celda;
@@ -167,6 +218,7 @@ function Mapa3D({
   hueco: huecoProp = SIN_HUECO,
   enfoque = null,
   onAgregarDestino,
+  onSeleccionDestino,
 }: MapaMarteProps) {
   const movil = useSyncExternalStore(sinSuscripcion, esMovil, () => false);
   const reducido = useSyncExternalStore(sinSuscripcion, esReducido, () => false);
@@ -177,15 +229,26 @@ function Mapa3D({
 
   const [fase, setFase] = useState<Fase>("globo");
   const [asentado, setAsentado] = useState(false);
-  const [fundido, setFundido] = useState(false);
+  // Volviendo al globo: la cámara del terreno sube a la órbita baja y después se cambia de escena
+  const [saliendo, setSaliendo] = useState(false);
+  // El globo empieza en la órbita baja (se viene del terreno) y hasta que no reposa no se puede girar
+  const [desdeOrbita, setDesdeOrbita] = useState(false);
+  const [globoEnReposo, setGloboEnReposo] = useState(false);
   const [intro, setIntro] = useState(true);
   const [vista, setVista] = useState<Vista>("3d");
   const [orden, setOrden] = useState<Orden>({ tipo: "reset", n: 0 });
   const [sel, setSel] = useState<Seleccion | null>(null);
+  // El panel destaca la fila del destino de la misión seleccionado en el mapa
+  const propioSel = sel?.propio ?? null;
+  useEffect(() => onSeleccionDestino?.(propioSel), [propioSel, onSeleccionDestino]);
   const [fotoAbierta, setFotoAbierta] = useState<IdDestino | null>(null);
   const [fuentesAbiertas, setFuentesAbiertas] = useState(false);
-  const [alturas, setAlturas] = useState<Alturas | null>(null);
+  const [relieve, setRelieve] = useState<Relieve | null>(null);
+  const [regionHd, setRegionHd] = useState<Texture | null>(null);
   const [dem, setDem] = useState<Float32Array | null>(null);
+  const fotoRef = useRef<HTMLCanvasElement>(null);
+  const capturar = useRef<Captura | null>(null);
+  const compositor = useRef<Compositor | null>(null);
   const [pistaOcultada, setPistaOcultada] = useState(false);
   const pistaVistaAntes = useSyncExternalStore(sinSuscripcion, leerPistaVista, () => true);
 
@@ -199,19 +262,50 @@ function Mapa3D({
   const hueco = useMemo(() => ({ der, abajo }), [der, abajo]);
 
   // ---- Datos ----
-  // Las texturas del terreno se piden mientras se ve el globo: al llegar ya están (sin hueco en negro)
+  // Relieve en tres niveles: la zona es imprescindible; sin el entorno o la región (no han cargado)
+  // el terreno se dibuja con lo que haya
   useEffect(() => {
-    if (cargaInicial) return;
-    for (const url of [RUTA_CONTEXTO, "/data/aoi_color.jpg", "/data/3d/terreno_normal.jpg"]) useTexture.preload(url);
-  }, [cargaInicial]);
-  useEffect(() => {
-    cargarAlturas().then(setAlturas).catch((e) => console.warn("[mapa 3D] alturas:", e));
+    let vivo = true;
+    const opcional = <T,>(pr: Promise<T>, que: string) =>
+      pr.catch((e) => {
+        console.warn(`[mapa 3D] sin ${que}:`, e);
+        return null;
+      });
+    Promise.all([cargarAlturas(), opcional(cargarEntorno(), "entorno"), opcional(cargarAlturasGale(), "región")])
+      .then(([zona, entorno, gale]) => {
+        if (vivo) setRelieve({ zona, entorno, region: gale ? regionComoAlturas(gale) : null });
+      })
+      .catch((e) => console.warn("[mapa 3D] alturas:", e));
     cargarDem().then(setDem);
+    return () => {
+      vivo = false;
+    };
   }, []);
-  // La malla del terreno se prepara mientras se ve el globo: bajar no bloquea la animación
+  // Las mallas del terreno se preparan mientras se ve el globo: bajar no bloquea la animación
   useEffect(() => {
-    if (alturas && !cargaInicial) precalentarTerreno(alturas, movil ? 2 : 1);
-  }, [alturas, movil, cargaInicial]);
+    if (relieve && !cargaInicial) precalentarTerreno(relieve, movil ? 2 : 1);
+  }, [relieve, movil, cargaInicial]);
+  // En escritorio, la región de Gale a más resolución (para el globo y para el terreno), cuando ya se ve el globo
+  useEffect(() => {
+    if (movil || cargaInicial) return;
+    let vivo = true;
+    new TextureLoader().load("/data/3d/gale_color_4k.jpg", (t) => {
+      if (!vivo) return t.dispose();
+      t.colorSpace = SRGBColorSpace;
+      t.anisotropy = 8;
+      setRegionHd(t);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [movil, cargaInicial]);
+  const precarga = useMemo(
+    () => ({
+      color: [RUTA_CONTEXTO, rutaZona(movil), ...(relieve?.entorno ? [rutaEntorno(movil)] : []), ...(relieve?.region ? [RUTA_REGION] : [])],
+      otras: [RUTA_NORMAL],
+    }),
+    [movil, relieve],
+  );
   useEffect(() => {
     const el = contRef.current;
     if (!el) return;
@@ -253,32 +347,53 @@ function Mapa3D({
 
   // ---- Fases ----
   // El panel entra cuando la cámara ya se ha posado en la zona de estudio (no al empezar a bajar)
-  const enTerreno = fase === "terreno" && alturas !== null;
-  const faseAviso: Fase = fase === "terreno" ? (enTerreno && asentado ? "terreno" : "descenso") : fase;
+  // y sale en cuanto se pide volver al globo
+  const enTerreno = fase === "terreno" && relieve !== null;
+  const faseAviso: Fase = saliendo ? "globo" : fase === "terreno" ? (enTerreno && asentado ? "terreno" : "descenso") : fase;
   useEffect(() => onFase?.(faseAviso), [faseAviso, onFase]);
   const alAsentar = useCallback(() => setAsentado(true), []);
-  // Se baja a la zona de estudio tocando el rótulo de Gale en el globo (no hay descenso automático)
-  const alLlegar = useCallback(() => {
-    setFundido(true);
-    setTimeout(() => {
-      setFase("terreno");
-      setTimeout(() => setFundido(false), 80);
-    }, 260);
+
+  // Imagen fija del último fotograma, encima del lienzo mientras se cambia de escena por debajo
+  const ponerFoto = useCallback(() => {
+    const c = fotoRef.current;
+    if (!c) return;
+    capturar.current?.(c);
+    c.style.transition = "none";
+    c.style.opacity = "1";
   }, []);
-  // Al globo con el mismo fundido que a la llegada (sin cortes). Se avisa ya de la fase «globo»
-  // para que el panel salga bajo el fundido: montar el globo bloquea el hilo y cortaría su animación.
+  const quitarFoto = useCallback(() => {
+    const c = fotoRef.current;
+    if (!c) return;
+    c.style.transition = `opacity ${reducido ? 300 : 750}ms ease-in-out`;
+    c.style.opacity = "0";
+  }, [reducido]);
+
+  // Se baja a la zona de estudio tocando el rótulo de Gale en el globo (no hay descenso automático).
+  // Cuando la cámara del globo llega a la órbita baja, se cambia al terreno, que empieza en esa vista.
+  const alLlegar = useCallback(() => {
+    ponerFoto();
+    setFase("terreno");
+  }, [ponerFoto]);
+  // Al globo: el panel sale ya, la cámara sube a la órbita baja y ahí se cambia de escena
   const volverAlGlobo = () => {
+    if (saliendo) return;
     setSel(null);
     vivo.set({ hover: null });
-    setFundido(true);
-    onFase?.("globo");
-    setTimeout(() => {
-      setIntro(true);
-      setAsentado(false);
-      setFase("globo");
-      setTimeout(() => setFundido(false), 80);
-    }, 320);
+    setSaliendo(true);
   };
+  const alSalir = useCallback(() => {
+    ponerFoto();
+    setIntro(true);
+    setAsentado(false);
+    setSaliendo(false);
+    setGloboEnReposo(false);
+    setDesdeOrbita(true);
+    setFase("globo");
+  }, [ponerFoto]);
+  const alReposarGlobo = useCallback(() => {
+    setGloboEnReposo(true);
+    setDesdeOrbita(false);
+  }, []);
   const irAGale = () => {
     setIntro(true);
     setFase("descenso");
@@ -394,21 +509,35 @@ function Mapa3D({
           dpr={[1, movil ? 1.25 : 1.75]}
           gl={{ antialias: !post, powerPreference: "high-performance", stencil: false }}
           camera={{ fov: 40, near: 0.002, far: 400, position: [0, 0, 3] }}
-          onPointerMissed={() => fase === "terreno" && setSel(null)}
+          onPointerMissed={() => fase === "terreno" && !saliendo && setSel(null)}
         >
+          <Capturador registroRef={capturar} compositorRef={compositor} />
+          {!enTerreno && !cargaInicial && (
+            <Suspense fallback={null}>
+              <PrecargaTerreno color={precarga.color} otras={precarga.otras} />
+            </Suspense>
+          )}
           <Suspense fallback={null}>
-            {!enTerreno || !alturas ? (
+            {!enTerreno || !relieve ? (
               <EscenaGlobo
                 descendiendo={fase === "descenso"}
+                desdeOrbita={desdeOrbita}
                 hd={!movil}
                 reducido={reducido}
+                galeHd={regionHd}
                 onLlegada={alLlegar}
                 onIrAGale={irAGale}
+                onLista={quitarFoto}
+                onReposo={alReposarGlobo}
                 mostrarMarca={!cargaInicial}
               />
             ) : (
               <EscenaTerreno
-                alturas={alturas}
+                relieve={relieve}
+                regionHd={regionHd}
+                saliendo={saliendo}
+                onLista={quitarFoto}
+                onSalida={alSalir}
                 fotograma={fotograma}
                 contornos={contornos}
                 probDe={probDestino}
@@ -434,9 +563,11 @@ function Mapa3D({
                 onAsentado={alAsentar}
               />
             )}
-            {post && <Efectos terreno={enTerreno} />}
+            {post && <Efectos terreno={enTerreno} compositor={compositor} />}
           </Suspense>
         </Canvas>
+        {/* Imagen fija del cambio de escena (ver arriba) */}
+        <canvas ref={fotoRef} aria-hidden className="pointer-events-none absolute inset-0 z-10 h-full w-full opacity-0" />
 
         {/* ---- Interfaz: ocupa la parte que no tapa el panel y se aparta con él ---- */}
         <div
@@ -444,7 +575,10 @@ function Mapa3D({
           style={{ right: hueco.der, bottom: hueco.abajo, transitionDuration: `${DURACION_PANEL}ms`, transitionTimingFunction: CURVA_PANEL }}
         >
           {enTerreno && (
-            <>
+            <div
+              inert={!asentado || saliendo}
+              className={`absolute inset-0 transition-opacity duration-500 motion-reduce:transition-none ${asentado && !saliendo ? "opacity-100" : "opacity-0"}`}
+            >
               <TooltipVivo vivo={vivo} probCelda={probCelda} ancho={visible.w} />
               {/* Elegir el punto de un destino nuevo (lo pide el panel) */}
               {seleccionandoDestino && (
@@ -486,7 +620,8 @@ function Mapa3D({
               )}
               {!pistaVistaAntes && !pistaOcultada && !sel && !seleccionandoDestino && (
                 <p className="pointer-events-none absolute left-3 top-[4.25rem] z-20 max-w-[16rem] rounded-md bg-[#060a17]/90 px-3 py-2 text-[13px] leading-snug text-[#b9c6e6]">
-                  {t.pista3d}
+                  {movil ? t.pistaGestosTactil : t.pistaGestos}
+                  <span className="mt-1 block text-[#eaf0ff]">{t.pista3d}</span>
                 </p>
               )}
               <Controles3D
@@ -495,6 +630,7 @@ function Mapa3D({
                 vista={vista}
                 onVista={setVista}
                 compacto={estrecho}
+                tactil={movil}
               />
               <CapaViva
                 vivo={vivo}
@@ -523,15 +659,18 @@ function Mapa3D({
                   }
                 }
               />
-            </>
+            </div>
           )}
 
-          {/* ---- Interfaz del globo ---- */}
+          {/* ---- Interfaz del globo: se retira durante el descenso y el regreso ---- */}
           {!enTerreno && !cargaInicial && (
-            <>
+            <div
+              inert={fase !== "globo" || !globoEnReposo}
+              className={`absolute inset-0 transition-opacity duration-500 motion-reduce:transition-none ${fase === "globo" && globoEnReposo ? "opacity-100" : "opacity-0"}`}
+            >
               <SelectorIdioma className="pointer-events-auto absolute right-3 top-3 z-20" />
               <Brujula azimut={0} mPorPx={null} onFuentes={() => setFuentesAbiertas(true)} textoFuentes={t.textoFuentesGlobo} />
-            </>
+            </div>
           )}
         </div>
 
@@ -546,12 +685,6 @@ function Mapa3D({
           </div>
         )}
 
-        {/* Entrada en la atmósfera */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 z-30 bg-[#cfa985] transition-opacity ease-out"
-          style={{ opacity: fundido ? 1 : 0, transitionDuration: fundido ? "240ms" : "650ms" }}
-        />
       </div>
 
       {fuentesAbiertas && <Fuentes onCerrar={() => setFuentesAbiertas(false)} />}

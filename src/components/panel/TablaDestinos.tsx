@@ -4,13 +4,19 @@ import { useEffect, useRef, useState } from "react";
 import type { Resultado } from "@/lib/contract";
 import { N } from "@/lib/constants";
 import { distanciaDesdeHabitatKm, desnivelDesdeHabitatM, type DestinoMision } from "@/lib/data/targets";
+import { colorViridis } from "@/lib/mapa/viridis";
 import { enIdioma, useIdioma } from "@/lib/i18n";
-import { AMBAR, BORDE, Chevron, CIFRA, MarcaDestino, Seccion, TEXTO } from "./comun";
+import { A_SANGRE, AMBAR, BORDE, Chevron, CIFRA, Despliegue, FOCO, MarcaDestino, MARGEN, MARGEN_FUERA, mostrarEnPanel, Seccion, TEXTO } from "./comun";
 
 interface Props {
   resultado: Resultado | null;
   /** Destinos de la misión: propuestos (M1…) y añadidos por la tripulación (P1…) */
   destinosMision: DestinoMision[];
+  /** Destino desplegado (lo lleva la página: también puede elegirse desde el mapa) */
+  activo: string | null;
+  onActivo: (id: string | null) => void;
+  /** Se está calculando otra salida: las probabilidades que se ven van a cambiar */
+  calculando?: boolean;
   /** Nombre y tareas que se proponen al añadir un punto de referencia */
   sugerencia?: { nombre: string; tareas: string[] } | null;
   seleccionando: boolean;
@@ -19,25 +25,38 @@ interface Props {
   onCancelarSeleccion: () => void;
   onGuardarDestino: (datos: { nombre: string; tareas: string[] }) => void;
   onEliminarDestino: (id: string) => void;
-  /** Al abrir un destino, el mapa vuela hasta él */
+  /** Al desplegar un destino desde el panel, el mapa vuela hasta él */
   onEnfocar?: (id: string) => void;
 }
 
-/** Columnas: destino · distancia · desnivel · probabilidad · flecha */
-const COLUMNAS = "grid grid-cols-[minmax(0,1fr)_3.9rem_3.7rem_3.3rem_0.75rem] items-center gap-x-2";
+/**
+ * Fila en una línea cuando el panel es ancho (≥ 400 px): destino · distancia · desnivel ·
+ * probabilidad · flecha. En estrecho (móvil, ventanas pequeñas) el nombre ocupa toda la línea y la
+ * distancia y el desnivel bajan a una segunda, para que el nombre no se corte.
+ */
+const COLUMNAS =
+  "grid grid-cols-[minmax(0,1fr)_auto_0.75rem] items-center gap-x-2 @[400px]:grid-cols-[minmax(0,1fr)_3.3rem_3.2rem_2.9rem_0.75rem] @[400px]:gap-x-1.5";
+
+/** La misma escala que el mapa: la barra de cada destino es la clave cortada en su probabilidad. */
+const ESCALA = `linear-gradient(90deg, ${[0, 0.25, 0.5, 0.75, 1].map((v) => colorViridis(v)).join(", ")})`;
 
 const desnivel = (m: number | null) => (m === null ? "—" : `${m > 0 ? "+" : m < 0 ? "−" : ""}${Math.abs(m)} m`);
 
 /**
- * PERSONA 3 · Destinos de la misión: los propuestos (M1–M6) y los que añade la tripulación sobre el
- * mapa (P1, P2…). Los sitios de Curiosity (T1–T6) no están aquí: en el mapa son puntos de
- * referencia. Muestra distancia, desnivel y probabilidad de ir y volver. Al pulsar un destino se
- * despliega su contexto y sus tareas y el mapa lo enfoca. Cualquiera se puede quitar del plan.
- * Las marcas son las mismas que en el mapa (punto los propuestos, rombo los añadidos).
+ * PERSONA 3 · Destinos de la misión: lo que el modelo responde para la salida definida arriba.
+ * Están los propuestos (M1–M6) y los que añade la tripulación sobre el mapa (P1, P2…); los sitios
+ * de Curiosity (T1–T6) no, porque en el mapa son puntos de referencia. Cada fila da la distancia,
+ * el desnivel y la probabilidad de ir y volver, con una barra en la misma escala de color del mapa
+ * y la marca del 50 %. Al pulsar un destino se despliegan su contexto y sus tareas y el mapa lo
+ * enfoca; cualquiera se puede quitar del plan. Las marcas son las del mapa (punto los propuestos,
+ * rombo los añadidos; ámbar si la probabilidad es del 50 % o más).
  */
 export default function TablaDestinos({
   resultado,
   destinosMision,
+  activo,
+  onActivo,
+  calculando = false,
   sugerencia = null,
   seleccionando,
   puntoSeleccionado,
@@ -47,29 +66,16 @@ export default function TablaDestinos({
   onEliminarDestino,
   onEnfocar,
 }: Props) {
-  const [abierto, setAbierto] = useState<string | null>(null);
   const { t, idioma } = useIdioma();
   const alternar = (id: string) => {
-    if (abierto !== id) onEnfocar?.(id);
-    setAbierto(abierto === id ? null : id);
+    if (activo === id) return onActivo(null);
+    onEnfocar?.(id);
+    onActivo(id);
   };
 
   return (
-    <Seccion
-      id="titulo-destinos"
-      titulo={t.destinosTitulo}
-      valor={<span className={`text-[12px] ${TEXTO.terciario}`}>{t.destinosAyuda}</span>}
-    >
-      {/* Cabecera de columnas */}
-      <div className={`${COLUMNAS} px-2 pb-1 text-[11.5px] ${TEXTO.terciario}`} aria-hidden>
-        <span>{t.colDestino}</span>
-        <span className="text-right">{t.colDistancia}</span>
-        <span className="text-right">{t.colDesnivel}</span>
-        <span className="text-right">{t.colIrVolver}</span>
-        <span />
-      </div>
-
-      <ul className={`divide-y divide-[#a0beff]/[0.1] border-y ${BORDE}`}>
+    <Seccion id="titulo-destinos" titulo={t.destinosTitulo} valor={<Aclaracion texto={t.colIrVolver} ayuda={t.irVolverAyuda} />}>
+      <ul className={`${A_SANGRE} border-t ${BORDE}`}>
         {destinosMision.map((original) => enIdioma(original, idioma)).map((d) => (
           <FilaDestino
             key={d.id}
@@ -78,23 +84,24 @@ export default function TablaDestinos({
             distanciaKm={distanciaDesdeHabitatKm(d.fila, d.columna)}
             desnivelM={desnivelDesdeHabitatM(resultado, d.fila, d.columna)}
             probabilidad={resultado?.prob[d.fila * N + d.columna]}
+            calculando={calculando}
             contexto={d.contexto ?? t.contextoAnadido(d.fila, d.columna)}
             tareas={d.tareas}
             personalizado={!d.propuesto}
-            abierto={abierto === d.id}
+            abierto={activo === d.id}
             onToggle={() => alternar(d.id)}
             onEliminar={() => onEliminarDestino(d.id)}
           />
         ))}
         {destinosMision.length === 0 && (
-          <li className={`px-2 py-3 text-[12.5px] ${TEXTO.terciario}`}>{t.sinDestinos}</li>
+          <li className={`${MARGEN} border-b ${BORDE} py-3 text-[12.5px] ${TEXTO.terciario}`}>{t.sinDestinos}</li>
         )}
       </ul>
 
       {/* Alta de destinos sobre el mapa */}
-      <div className="mt-3">
+      <div className="mt-2.5">
         {seleccionando ? (
-          <div className={`flex items-center gap-3 rounded-[3px] border ${BORDE} border-l-2 border-l-[#ff8fd8] bg-[#060a17] py-1 pl-3 pr-1`} role="status">
+          <div className={`flex min-h-11 items-center gap-3 rounded-[3px] border ${BORDE} border-l-2 border-l-[#ff8fd8] bg-[#060a17] py-1 pl-3 pr-1`} role="status">
             <p className="min-w-0 flex-1 text-[13px] leading-snug text-[#eaf0ff]">
               {t.tocaPuntoMapa}
               <span className={`block text-[12px] ${TEXTO.terciario}`}>{t.tocaPuntoAyuda}</span>
@@ -102,7 +109,7 @@ export default function TablaDestinos({
             <button
               type="button"
               onClick={onCancelarSeleccion}
-              className={`h-10 shrink-0 rounded-[3px] px-3 text-[13px] ${TEXTO.secundario} outline-none transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:ring-1 focus-visible:ring-white/60`}
+              className={`h-10 shrink-0 rounded-[3px] px-3 text-[13px] ${TEXTO.secundario} transition-colors hover:bg-white/[0.06] hover:text-white ${FOCO}`}
             >
               {t.cancelar}
             </button>
@@ -121,7 +128,7 @@ export default function TablaDestinos({
           <button
             type="button"
             onClick={onIniciarSeleccion}
-            className={`flex h-11 w-full items-center justify-center gap-2 rounded-[3px] border border-dashed border-[#a0beff]/30 text-[13.5px] text-[#eaf0ff] outline-none transition-colors hover:border-[#a0beff]/50 hover:bg-white/[0.03] focus-visible:border-[#eaf0ff]/70`}
+            className={`flex h-11 w-full items-center justify-center gap-2 rounded-[3px] border border-dashed border-[#a0beff]/30 text-[13.5px] text-[#eaf0ff] transition-colors hover:border-[#a0beff]/55 hover:bg-white/[0.03] [@media(pointer:fine)]:h-10 ${FOCO}`}
           >
             <svg width="14" height="14" viewBox="-7 -7 14 14" aria-hidden>
               <path d="M0 -6v3.4M0 2.6V6M-6 0h3.4M2.6 0H6" stroke="#ff8fd8" strokeWidth="1.5" strokeLinecap="round" />
@@ -135,12 +142,69 @@ export default function TablaDestinos({
   );
 }
 
+/**
+ * Rótulo de la columna de probabilidad con su explicación: se ve al pasar el ratón, al tocarlo o al
+ * llegar con el teclado (el punteado avisa de que hay algo que leer).
+ */
+function Aclaracion({ texto, ayuda }: { texto: string; ayuda: string }) {
+  return (
+    <span className="group relative mr-5 shrink-0">
+      <button
+        type="button"
+        aria-describedby="ayuda-ir-volver"
+        className={`-my-2 flex h-9 cursor-help items-center rounded-[3px] text-[12px] ${TEXTO.terciario} underline decoration-[#8d9cc2]/60 decoration-dotted underline-offset-[3px] transition-colors hover:text-[#b9c6e6] ${FOCO}`}
+      >
+        {texto}
+      </button>
+      <span
+        id="ayuda-ir-volver"
+        role="tooltip"
+        className={`pointer-events-none absolute -right-5 top-full z-20 mt-0.5 w-60 rounded-[3px] border ${BORDE} bg-[#060a17] px-2.5 py-2 text-left text-[12px] leading-snug ${TEXTO.secundario} opacity-0 shadow-[0_8px_24px_-12px_rgba(0,0,0,0.9)] transition-opacity duration-150 group-focus-within:opacity-100 group-hover:opacity-100 motion-reduce:transition-none`}
+      >
+        {ayuda}
+      </span>
+    </span>
+  );
+}
+
+/** Desnivel respecto al hábitat: flecha arriba o abajo y metros. */
+function Desnivel({ m, titulo }: { m: number | null; titulo: string | undefined }) {
+  if (m === null) return <span className={TEXTO.terciario}>—</span>;
+  return (
+    <span title={titulo} className="inline-flex items-center justify-end gap-1 whitespace-nowrap">
+      {m !== 0 && (
+        <svg width="7" height="9" viewBox="0 0 7 9" aria-hidden className={`shrink-0 text-[#8d9cc2] ${m < 0 ? "rotate-180" : ""}`}>
+          <path d="M3.5 8.2V1.2M0.8 3.8 3.5 1.1l2.7 2.7" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+      {Math.abs(m)} m
+    </span>
+  );
+}
+
+/** Barra de probabilidad: la escala del mapa cortada en `p`, con la marca del 50 % (como el contorno). */
+function BarraProbabilidad({ p, tenue }: { p: number | undefined; tenue: boolean }) {
+  const hay = p !== undefined && p >= 0.005;
+  return (
+    <span aria-hidden className={`relative block h-[3px] bg-[#a0beff]/[0.13] ${MARGEN_FUERA}`}>
+      {hay && (
+        <span
+          className={`absolute inset-y-0 left-0 transition-[width,opacity] duration-300 ease-out motion-reduce:transition-none ${tenue ? "opacity-50" : ""}`}
+          style={{ width: `${Math.min(1, p) * 100}%`, backgroundImage: ESCALA, backgroundSize: `${100 / Math.min(1, p)}% 100%` }}
+        />
+      )}
+      <span className="absolute -top-[2px] left-1/2 h-[7px] w-px bg-[#e8f1ff]/75" />
+    </span>
+  );
+}
+
 interface FilaDestinoProps {
   etiqueta: string;
   nombre: string;
   distanciaKm: number;
   desnivelM: number | null;
   probabilidad: number | undefined;
+  calculando: boolean;
   contexto: string;
   tareas: string[];
   personalizado?: boolean;
@@ -155,6 +219,7 @@ function FilaDestino({
   distanciaKm,
   desnivelM,
   probabilidad,
+  calculando,
   contexto,
   tareas,
   personalizado = false,
@@ -166,34 +231,51 @@ function FilaDestino({
   const tieneProb = probabilidad !== undefined;
   const alcanzable = tieneProb && probabilidad >= 0.5;
   const probTexto = tieneProb ? pct(probabilidad) : t.sinCalcular;
+  const raiz = useRef<HTMLLIElement>(null);
+
+  // Al desplegarse (desde el panel o desde el mapa) queda a la vista, ya con su altura final
+  useEffect(() => {
+    if (!abierto) return;
+    const espera = setTimeout(() => mostrarEnPanel(raiz.current), 230);
+    return () => clearTimeout(espera);
+  }, [abierto]);
 
   return (
-    <li className={abierto ? "bg-[#060a17]" : ""}>
+    <li ref={raiz} className={`relative transition-colors ${abierto ? "bg-[#060a17]" : ""}`}>
+      {/* El rosa es la selección, como en el mapa */}
+      <span aria-hidden className={`absolute inset-y-0 left-0 w-[2px] bg-[#ff8fd8] transition-opacity ${abierto ? "opacity-100" : "opacity-0"}`} />
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={abierto}
-        aria-controls={abierto ? `tareas-${etiqueta}` : undefined}
+        aria-controls={`tareas-${etiqueta}`}
         aria-label={t.filaDestino(etiqueta, nombre, num(distanciaKm, 2), desnivel(desnivelM), probTexto, abierto)}
-        className={`${COLUMNAS} min-h-10 w-full px-2 py-1.5 text-left outline-none transition-colors hover:bg-white/[0.03] focus-visible:bg-white/[0.05]`}
+        title={abierto ? undefined : t.verEnMapa}
+        className={`${COLUMNAS} ${MARGEN} min-h-11 w-full py-1.5 text-left outline-none transition-colors hover:bg-white/[0.035] focus-visible:bg-white/[0.06] @[400px]:py-0 @[400px]:[@media(pointer:fine)]:min-h-9`}
       >
-        <span className="flex min-w-0 items-center gap-2">
+        <span className="col-start-1 row-start-1 flex min-w-0 items-center gap-2">
           <MarcaDestino alcance={alcanzable} propio={personalizado} />
           <span className={`${CIFRA} shrink-0 text-[11.5px] ${TEXTO.terciario}`}>{etiqueta}</span>
           <span className="truncate text-[13.5px] text-[#eaf0ff]">{nombre}</span>
         </span>
-        <span className={`${CIFRA} whitespace-nowrap text-right text-[12px] ${TEXTO.secundario}`}>{num(distanciaKm, 2)} km</span>
-        <span className={`${CIFRA} whitespace-nowrap text-right text-[12px] ${desnivelM === null ? TEXTO.terciario : TEXTO.secundario}`}>
-          {desnivel(desnivelM)}
+        <span className={`${CIFRA} col-start-1 row-start-2 flex items-center gap-3 pl-5 text-[12px] ${TEXTO.secundario} @[400px]:contents`}>
+          <span className="whitespace-nowrap @[400px]:col-start-2 @[400px]:row-start-1 @[400px]:text-right">{num(distanciaKm, 2)} km</span>
+          <span className="@[400px]:col-start-3 @[400px]:row-start-1 @[400px]:text-right">
+            <Desnivel m={desnivelM} titulo={desnivelM === null ? undefined : t.desnivelTexto(desnivelM)} />
+          </span>
         </span>
-        <span className={`${CIFRA} whitespace-nowrap text-right text-[13px]`} style={{ color: alcanzable ? AMBAR : tieneProb ? "#eaf0ff" : "#8d9cc2" }}>
+        <span
+          className={`${CIFRA} col-start-2 row-span-2 row-start-1 whitespace-nowrap text-right text-[14px] transition-opacity duration-200 @[400px]:col-start-4 @[400px]:row-span-1 ${calculando ? "opacity-55" : ""}`}
+          style={{ color: alcanzable ? AMBAR : tieneProb ? "#eaf0ff" : "#8d9cc2" }}
+        >
           {tieneProb ? pct(probabilidad) : "—"}
         </span>
-        <Chevron abierto={abierto} />
+        <Chevron abierto={abierto} className="col-start-3 row-span-2 row-start-1 @[400px]:col-start-5 @[400px]:row-span-1" />
       </button>
+      <BarraProbabilidad p={probabilidad} tenue={calculando} />
 
-      {abierto && (
-        <div id={`tareas-${etiqueta}`} className="px-2 pb-3 pl-[2.6rem]">
+      <Despliegue abierto={abierto} id={`tareas-${etiqueta}`}>
+        <div className={`${MARGEN} pb-3 pt-2.5`}>
           <p className={`text-[12.5px] leading-snug ${TEXTO.secundario}`}>{contexto}</p>
           <p className={`mt-2 text-[12px] ${TEXTO.terciario}`}>{t.tareasPrevistas}</p>
           {tareas.length > 0 ? (
@@ -213,13 +295,13 @@ function FilaDestino({
             <button
               type="button"
               onClick={onEliminar}
-              className={`-ml-2 mt-2 h-9 rounded-[3px] px-2 text-[12.5px] ${TEXTO.secundario} underline decoration-[#8d9cc2]/50 underline-offset-2 outline-none transition-colors hover:text-white focus-visible:ring-1 focus-visible:ring-white/60`}
+              className={`-mb-1.5 -ml-2 mt-1.5 h-9 rounded-[3px] px-2 text-[12.5px] ${TEXTO.secundario} underline decoration-[#8d9cc2]/50 underline-offset-2 transition-colors hover:text-white ${FOCO}`}
             >
               {t.quitarMision}
             </button>
           )}
         </div>
-      )}
+      </Despliegue>
     </li>
   );
 }
@@ -233,7 +315,7 @@ interface FormularioDestinoProps {
   onCancelar: () => void;
 }
 
-const CAMPO = `w-full rounded-[3px] border ${BORDE} bg-[#0a0f1f] px-3 text-[13.5px] text-[#eaf0ff] outline-none transition-colors placeholder:text-[#8d9cc2]/70 focus:border-[#eaf0ff]/60`;
+const CAMPO = `w-full rounded-[3px] border ${BORDE} bg-[#0a0f1f] px-3 text-[13.5px] text-[#eaf0ff] outline-none transition-colors placeholder:text-[#8d9cc2]/70 hover:border-[#a0beff]/30 focus:border-[#eaf0ff]/60`;
 
 function FormularioDestino({ fila, columna, sugerencia, resultado, onGuardar, onCancelar }: FormularioDestinoProps) {
   const [nombre, setNombre] = useState(sugerencia?.nombre ?? "");
@@ -243,10 +325,13 @@ function FormularioDestino({ fila, columna, sugerencia, resultado, onGuardar, on
   const { t, pct, num } = useIdioma();
   const campoNombre = useRef<HTMLInputElement>(null);
 
-  // Al aparecer (punto elegido en el mapa o «Añadir» desde la ficha) se ve y se escribe el nombre.
-  // En pantallas táctiles no se enfoca: el teclado taparía el mapa.
+  // Al aparecer (punto elegido en el mapa o «Añadir» desde la ficha) y al crecer con cada tarea,
+  // queda a la vista entero, con «Guardar» incluido
   useEffect(() => {
-    raiz.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    mostrarEnPanel(raiz.current);
+  }, [tareas.length]);
+  // Se escribe el nombre nada más aparecer. En pantallas táctiles no se enfoca: el teclado taparía el mapa.
+  useEffect(() => {
     let tactil = false;
     try {
       tactil = window.matchMedia("(pointer: coarse)").matches;
@@ -279,9 +364,9 @@ function FormularioDestino({ fila, columna, sugerencia, resultado, onGuardar, on
   };
 
   return (
-    <div ref={raiz} className={`scroll-my-3 rounded-[3px] border ${BORDE} border-l-2 border-l-[#ff8fd8] bg-[#060a17] p-3`}>
+    <div ref={raiz} className={`rounded-[3px] border ${BORDE} border-l-2 border-l-[#ff8fd8] bg-[#060a17] p-3`}>
       <div className="flex items-baseline justify-between">
-        <p className="text-[13.5px] font-medium text-[#eaf0ff]">{t.destinoNuevo}</p>
+        <p className="text-[14px] font-medium text-[#eaf0ff]">{t.destinoNuevo}</p>
         <p className={`${CIFRA} text-[11.5px] ${TEXTO.terciario}`}>{t.celda(fila, columna)}</p>
       </div>
 
@@ -333,7 +418,7 @@ function FormularioDestino({ fila, columna, sugerencia, resultado, onGuardar, on
                   type="button"
                   onClick={() => eliminarTarea(i)}
                   aria-label={t.quitarTarea(tarea)}
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[3px] ${TEXTO.terciario} outline-none transition-colors hover:text-white focus-visible:ring-1 focus-visible:ring-white/60`}
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-[3px] ${TEXTO.terciario} transition-colors hover:bg-white/[0.06] hover:text-white ${FOCO}`}
                 >
                   <svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden>
                     <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" />
@@ -355,6 +440,7 @@ function FormularioDestino({ fila, columna, sugerencia, resultado, onGuardar, on
               }
             }}
             placeholder={t.tareaPlaceholder}
+            aria-label={t.anadirTarea}
             className={`${CAMPO} h-10 min-w-0 flex-1`}
           />
           <button
@@ -362,7 +448,7 @@ function FormularioDestino({ fila, columna, sugerencia, resultado, onGuardar, on
             onClick={agregarTarea}
             disabled={!nuevaTarea.trim()}
             aria-label={t.anadirTarea}
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[3px] border ${BORDE} text-[#eaf0ff] outline-none transition-colors hover:bg-white/[0.06] focus-visible:border-[#eaf0ff]/60 disabled:cursor-not-allowed disabled:opacity-40`}
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[3px] border ${BORDE} text-[#eaf0ff] transition-colors hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-40 ${FOCO}`}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden>
               <path d="M6 1v10M1 6h10" />
@@ -376,14 +462,14 @@ function FormularioDestino({ fila, columna, sugerencia, resultado, onGuardar, on
           type="button"
           onClick={guardar}
           disabled={!nombre.trim()}
-          className="h-10 flex-1 rounded-[3px] bg-[#eaf0ff] px-3 text-[13.5px] font-medium text-[#060a17] outline-none transition-colors hover:bg-white focus-visible:ring-2 focus-visible:ring-[#ff8fd8]/70 disabled:cursor-not-allowed disabled:opacity-40"
+          className={`h-10 flex-1 rounded-[3px] bg-[#eaf0ff] px-3 text-[13.5px] font-medium text-[#060a17] transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40 ${FOCO}`}
         >
           {t.guardarDestino}
         </button>
         <button
           type="button"
           onClick={onCancelar}
-          className={`h-10 rounded-[3px] border ${BORDE} px-3 text-[13.5px] ${TEXTO.secundario} outline-none transition-colors hover:bg-white/[0.06] hover:text-white focus-visible:border-[#eaf0ff]/60`}
+          className={`h-10 rounded-[3px] border ${BORDE} px-3 text-[13.5px] ${TEXTO.secundario} transition-colors hover:bg-white/[0.06] hover:text-white ${FOCO}`}
         >
           {t.cancelar}
         </button>

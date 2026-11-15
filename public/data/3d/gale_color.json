@@ -1,0 +1,9 @@
+{
+  "tinte_globo": [
+    0.5052,
+    0.6498,
+    1.0911
+  ],
+  "nota": "Factor RGB (lineal) que iguala gale_color al color medio del MDIM 2.1 en el borde de la región",
+  "fuente": "Mosaico CTX 6 m MC-23 (Robbins et al., USGS), coloreado con la paleta del mosaico HiRISE de Gale"
+}
