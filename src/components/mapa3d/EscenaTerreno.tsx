@@ -9,9 +9,9 @@
  *   sitios   hábitat, T1–T6, destinos de la misión, ruta del modelo y retícula de la selección
  *   cámara   vista 3D (oblicua) o cenital (norte arriba, sin girar). Gestos: lib/mapa3d/control.ts
  *
- * Llegada y salida: la escena empieza (y termina) en la órbita baja sobre la zona, la misma vista
- * con la que el globo termina su descenso; el cambio entre las dos escenas es un fundido (ver
- * MapaMarte3D). Desde ahí la cámara baja en arco hasta la vista 3D.
+ * Llegada y salida: la escena empieza (y termina) al pasar por la órbita baja sobre la zona, la
+ * misma vista por la que pasa el globo, y con el zoom en marcha: la cámara no se para en el cambio
+ * de escena (ver MapaMarte3D y lib/mapa3d/transito.ts). Desde ahí baja en arco hasta la vista 3D.
  *
  * Rendimiento (el lienzo se dibuja SOLO cuando algo cambia: frameloop «demand» en MapaMarte3D):
  *   - cada animación propia (vuelos, inercia, desplazamiento por el panel) pide fotogramas mientras dura;
@@ -38,6 +38,7 @@ import type { Almacen, EstadoVivo, PuntoPx } from "@/lib/mapa3d/almacen";
 import { CENIT, SOL } from "@/lib/mapa3d/atmosfera";
 import { aEscena, celdaAProyectadas, deEscena, LADO_M, proyectadasACelda, XC, YC } from "@/lib/mapa3d/coordenadas";
 import { LADO_PROB, pintarProbabilidad } from "@/lib/mapa3d/superposicion";
+import { frenar, lanzar, pendiente, PENDIENTE_MAX, TRANSITO, type FotoTransito } from "@/lib/mapa3d/transito";
 import { desplazarVista, planosDeCorte, ponerAnisotropia, ponerSRGB, quitarDesplazamiento, refrescar, sombrasFijas } from "@/lib/mapa3d/imperativo";
 import { caminoCorto, copiarEncuadre, LIMITES, mezclar, ORBITA, suave, type Encuadre } from "@/lib/mapa3d/camara";
 import { ControlMapa, type Suelo } from "@/lib/mapa3d/control";
@@ -64,6 +65,28 @@ export const rutaZona = (movil: boolean) => (movil ? "/data/aoi_color.jpg" : "/d
 export const RUTA_NORMAL = "/data/3d/terreno_normal.jpg";
 export const RUTA_REGION = "/data/3d/gale_color.jpg";
 export const rutaEntorno = (movil: boolean) => (movil ? "/data/3d/entorno_color_m.jpg" : "/data/3d/entorno_color.jpg");
+/** Posición de la imagen de normales en `rutasTerreno` (la única que no es de color) */
+const I_NORMAL = 2;
+/**
+ * Imágenes del terreno, en el orden en que se piden. La lista entera es la clave de la caché de
+ * useTexture: la precarga (mientras se ve el globo) y la escena tienen que pedir exactamente la misma,
+ * o al bajar se volverían a descodificar y a subir a la GPU.
+ */
+export function rutasTerreno(movil: boolean, entorno: boolean, region: boolean): string[] {
+  return [RUTA_CONTEXTO, rutaZona(movil), RUTA_NORMAL, ...(entorno ? [rutaEntorno(movil)] : []), ...(region ? [RUTA_REGION] : [])];
+}
+/**
+ * Carga las imágenes del terreno y las deja listas (sRGB, anisotropía) antes de subirlas a la GPU.
+ * Lo usan la escena y la precarga.
+ */
+export function useTexturasTerreno(movil: boolean, entorno: boolean, region: boolean): Texture[] {
+  const gl = useThree((s) => s.gl);
+  return useTexture(rutasTerreno(movil, entorno, region), (ts) => {
+    const todas = Array.isArray(ts) ? ts : [ts];
+    ponerSRGB(...todas.filter((_, i) => i !== I_NORMAL));
+    ponerAnisotropia(gl.capabilities.getMaxAnisotropy(), ...todas);
+  });
+}
 
 interface Props {
   relieve: Relieve;
@@ -101,11 +124,13 @@ interface Props {
   onLista: () => void;
   /** La cámara ya se ha posado en la zona de estudio (después de la llegada) */
   onAsentado: () => void;
-  /** La cámara ha llegado a la órbita baja al salir */
-  onSalida: () => void;
+  /** La cámara ha llegado a la órbita baja al salir; `ritmo`: el del zoom en ese momento (0 = parada) */
+  onSalida: (ritmo: number) => void;
+  /** Foto del cambio de escena: al llegar del globo, el terreno empieza donde va ella */
+  foto: FotoTransito;
 }
 
-const DUR = { llegada: 2800, salida: 1900, vista: 950, reset: 700, enfoque: 1100 };
+const DUR = { llegada: 1800, salida: 1500, vista: 950, reset: 700, enfoque: 1100 };
 /** Momento de la llegada (0–1) en que se considera posada la cámara: entra el panel */
 const ASENTADO = 0.86;
 /** Medio lado (m) de lo que se ve alrededor de un destino al enfocarlo */
@@ -125,8 +150,15 @@ interface Vuelo {
   dur: number;
   desde: Encuadre;
   hasta: Encuadre;
-  /** Vuelo de llegada o de salida: no se interrumpe con gestos */
+  /**
+   * Vuelo de llegada o de salida: no se interrumpe con gestos. La distancia lleva su propio avance
+   * (pendiente `m` en el extremo de la órbita baja: ahí el zoom no se para, lo sigue la otra escena);
+   * el giro, la inclinación y el punto de mira arrancan y frenan parados.
+   */
   tipo?: "llegada" | "salida";
+  m?: number;
+  /** Hasta cuándo (reloj) la foto de la otra escena acompaña el zoom */
+  fundido?: number;
 }
 
 function nivelEtiquetas(r: number, actual: 0 | 1 | 2): 0 | 1 | 2 {
@@ -158,13 +190,7 @@ function EscenaTerreno(p: Props) {
   // ---- Texturas ----
   const hayEntorno = relieve.entorno !== null;
   const hayRegion = relieve.region !== null;
-  const cargadas = useTexture([
-    RUTA_CONTEXTO,
-    rutaZona(p.movil),
-    RUTA_NORMAL,
-    ...(hayEntorno ? [rutaEntorno(p.movil)] : []),
-    ...(hayRegion ? [RUTA_REGION] : []),
-  ]);
+  const cargadas = useTexturasTerreno(p.movil, hayEntorno, hayRegion);
   const texturas = useMemo(() => {
     const [contexto, detalleZona, normal, ...resto] = cargadas;
     const entorno = hayEntorno ? resto.shift()! : null;
@@ -299,8 +325,23 @@ function EscenaTerreno(p: Props) {
     });
   }, [control, p.vista]);
 
-  // Llegada: la escena empieza en la órbita baja (la vista con la que termina el globo) y, cuando ya
-  // se ve, baja en arco hasta la vista 3D
+  // Llegada: la escena se monta en la órbita baja (la vista con la que termina el globo) y, cuando ya
+  // se ve, sigue bajando desde donde va la foto del globo (que ha seguido acercándose mientras tanto)
+  // y a su ritmo, en arco hasta la vista 3D
+  const llegar = () => {
+    control.detener();
+    const { z, v } = p.foto.estado();
+    const desde = orbita();
+    desde.r = ORBITA.r * Math.exp(-Math.max(0, z));
+    control.fijar(desde);
+    const hasta = caminoCorto(desde, encuadreDe(p.vista));
+    const largo = Math.log(desde.r / hasta.r);
+    // Si el ritmo de entrada pide más pendiente de la que admite el avance, el vuelo se acorta
+    const dur = v > 0 && largo > 0 ? Math.min(DUR.llegada, (1000 * PENDIENTE_MAX * largo) / v) : DUR.llegada;
+    const ahora = performance.now();
+    vuelo.current = { t0: ahora, dur, desde, hasta, tipo: "llegada", m: pendiente(v, dur, largo), fundido: ahora + TRANSITO.fundido };
+    invalidate();
+  };
   const asentado = useRef(false);
   const avisarAsentado = () => {
     if (asentado.current) return;
@@ -329,8 +370,13 @@ function EscenaTerreno(p: Props) {
   useEffect(() => {
     if (!saliendo) return;
     control.configurar({ bloqueado: true });
-    if (p.reducido) return onSalida();
-    volar(orbita(), DUR.salida, "salida");
+    if (p.reducido) return onSalida(0);
+    // Sube a la órbita baja y llega con el zoom en marcha: el globo lo continúa
+    control.detener();
+    const desde = copiarEncuadre(control.enc);
+    const hasta = caminoCorto(desde, orbita());
+    vuelo.current = { t0: performance.now(), dur: DUR.salida, desde, hasta, tipo: "salida", m: pendiente(TRANSITO.ritmo, DUR.salida, Math.log(hasta.r / desde.r)) };
+    invalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saliendo]);
 
@@ -431,7 +477,7 @@ function EscenaTerreno(p: Props) {
       else {
         etapa.current = "marcha";
         p.onLista();
-        if (control.bloqueado && !p.saliendo) volar(encuadreDe(p.vista), DUR.llegada, "llegada");
+        if (control.bloqueado && !p.saliendo) llegar();
         else avisarAsentado();
       }
     }
@@ -456,16 +502,19 @@ function EscenaTerreno(p: Props) {
     const v = vuelo.current;
     if (v) {
       const k = Math.min(1, (ahora - v.t0) / v.dur);
-      mezclar(v.desde, v.hasta, suave(k), encVuelo);
+      const ks = suave(k);
+      mezclar(v.desde, v.hasta, ks, encVuelo, v.tipo === "llegada" ? frenar(k, v.m ?? 0) : v.tipo === "salida" ? lanzar(k, v.m ?? 0) : ks);
       control.fijar(encVuelo);
       if (v.tipo === "llegada") {
+        // Durante el fundido, la foto del globo se acerca a la par que el terreno
+        if (v.fundido && ahora < v.fundido) p.foto.seguir(Math.log(ORBITA.r / encVuelo.r));
         if (k >= 0.72 && llegando) setLlegando(false);
         if (k >= ASENTADO) avisarAsentado();
       }
       if (k >= 1) {
         vuelo.current = null;
         if (v.tipo === "llegada") control.configurar({ bloqueado: false });
-        if (v.tipo === "salida") p.onSalida();
+        if (v.tipo === "salida") p.onSalida(((v.m ?? 0) * Math.log(v.hasta.r / v.desde.r) * 1000) / v.dur);
       } else invalidate();
     } else {
       if (control.actualizar(delta)) invalidate();

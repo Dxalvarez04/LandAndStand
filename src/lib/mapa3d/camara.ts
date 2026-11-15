@@ -44,11 +44,15 @@ export function caminoCorto(desde: Encuadre, hasta: Encuadre): Encuadre {
   return { ...hasta, theta: hasta.theta + vuelta * Math.round((desde.theta - hasta.theta) / vuelta) };
 }
 
-/** Encuadre intermedio de un vuelo (k ya suavizado). La distancia se interpola en escala logarítmica. */
-export function mezclar(a: Encuadre, b: Encuadre, k: number, out: Encuadre): Encuadre {
+/**
+ * Encuadre intermedio de un vuelo (k ya suavizado). La distancia se interpola en escala logarítmica
+ * y puede llevar su propio avance (`kr`): en la llegada y la salida el zoom no arranca o no frena
+ * parado, porque lo continúa la otra escena.
+ */
+export function mezclar(a: Encuadre, b: Encuadre, k: number, out: Encuadre, kr = k): Encuadre {
   out.theta = lerp(a.theta, b.theta, k);
   out.phi = lerp(a.phi, b.phi, k);
-  out.r = Math.exp(lerp(Math.log(a.r), Math.log(b.r), k));
+  out.r = Math.exp(lerp(Math.log(a.r), Math.log(b.r), kr));
   out.objetivo.lerpVectors(a.objetivo, b.objetivo, k);
   return out;
 }
@@ -62,6 +66,7 @@ export const LIMITES = { minDistancia: 180, maxDistancia: 70_000, maxPolar: 1.5,
 /**
  * Órbita baja sobre la zona de estudio: el punto donde se cambia entre el globo y el terreno. Las
  * dos escenas muestran desde ahí lo mismo (la región de Gale desde ~100 km, norte arriba, casi a
- * plomo), así que el cambio es un fundido entre dos vistas iguales.
+ * plomo), así que el cambio es un fundido entre dos vistas iguales. La cámara lo cruza sin pararse
+ * (ver transito.ts).
  */
 export const ORBITA = { r: 100_000, phi: 0.16, theta: 0 };

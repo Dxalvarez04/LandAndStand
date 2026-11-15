@@ -3,7 +3,7 @@
  * aparte para que los componentes no asignen propiedades a valores que React considera inmutables
  * (props, resultados de hooks); three.js necesita estas mutaciones y no afectan al render de React.
  */
-import { SRGBColorSpace, type PerspectiveCamera, type Texture, type WebGLRenderer } from "three";
+import { SRGBColorSpace, type Camera, type PerspectiveCamera, type Texture, type WebGLRenderer } from "three";
 
 export function ajustarCamara(c: PerspectiveCamera, near: number, far: number, fov = 40) {
   c.near = near;
@@ -38,6 +38,20 @@ export function refrescar(t: Texture) {
 
 export function fijarUniforme<T>(u: { value: T }, v: T) {
   u.value = v;
+}
+
+/** Ejecuta `f` con el campo de la cámara ampliado o reducido (zoom < 1 = más campo) y lo deja como estaba. */
+export function conZoom(c: Camera, zoom: number, f: () => void) {
+  const pc = c as PerspectiveCamera;
+  const antes = pc.zoom;
+  pc.zoom = antes * zoom;
+  pc.updateProjectionMatrix();
+  try {
+    f();
+  } finally {
+    pc.zoom = antes;
+    pc.updateProjectionMatrix();
+  }
 }
 
 /**

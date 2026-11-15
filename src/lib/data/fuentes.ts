@@ -164,18 +164,18 @@ export const FUENTES: FuenteOficial[] = [
   },
   {
     id: "relieveGale",
-    uso: "Región de Gale: relieve (en el globo y en el horizonte del 3D)",
+    uso: "Región de Gale: relieve (al bajar desde el globo y en el horizonte del 3D)",
     producto: "Mars MGS MOLA – MEX HRSC Blended DEM Global 200m (v2)",
     autoria: "DLR, NASA, Goddard Space Flight Center · USGS Astrogeology Science Center, 31/01/2018 (Fergason, Laura y Hare, 2017)",
     detalle:
-      "Modelo global que combina MOLA con el estéreo de HRSC (Mars Express) a 200 m/px. Da el relieve del cráter y del monte Sharp: en el globo, exagerado ×3; en el 3D, a escala real, más allá del entorno de la zona. No se usa para ningún cálculo.",
+      "Modelo global que combina MOLA con el estéreo de HRSC (Mars Express) a 200 m/px. Da el relieve del cráter y del monte Sharp: al bajar desde el globo, exagerado ×3; en el 3D, a escala real, más allá del entorno de la zona. No se usa para ningún cálculo.",
     credito: "USGS Astrogeology, HRSC-MOLA Blended DEM 200 m v2 (Fergason et al., 2017)",
     url: "https://astrogeology.usgs.gov/search/map/mars_mgs_mola_mex_hrsc_blended_dem_global_200m",
     sitio: "USGS Astropedia",
      en: {
-      uso: "Gale region: relief (on the globe and on the 3D horizon)",
+      uso: "Gale region: relief (on the way down from the globe and on the 3D horizon)",
       autoria: "DLR, NASA, Goddard Space Flight Center · USGS Astrogeology Science Center, 2018-01-31 (Fergason, Laura and Hare, 2017)",
-      detalle: "Global model combining MOLA with HRSC stereo (Mars Express) at 200 m/px. It gives the relief of the crater and Mount Sharp: on the globe, exaggerated ×3; in 3D, at true scale, beyond the surroundings of the study area. It is not used in any computation.",
+      detalle: "Global model combining MOLA with HRSC stereo (Mars Express) at 200 m/px. It gives the relief of the crater and Mount Sharp: on the way down from the globe, exaggerated ×3; in 3D, at true scale, beyond the surroundings of the study area. It is not used in any computation.",
     },
   },
 ];

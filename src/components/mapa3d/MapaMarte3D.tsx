@@ -9,11 +9,12 @@
  *   descenso  → al tocar el rótulo de Gale, la cámara baja hasta la órbita baja sobre la zona.
  *   terreno   → la zona de estudio en 3D con la probabilidad, contornos, destinos, ruta y ficha.
  *
- * El cambio entre el globo y el terreno (dos escenas distintas en el mismo lienzo) se hace en la
- * órbita baja, donde las dos muestran la misma vista: se deja encima una imagen fija del último
- * fotograma, se cambia la escena por debajo y, cuando la nueva ya se ve, la imagen se funde. Así no
- * hay corte ni pantalla en blanco, y el tirón de montar la escena queda oculto. La vuelta al globo
- * es lo mismo al revés.
+ * El cambio entre el globo y el terreno (dos escenas distintas en el mismo lienzo) se hace al pasar
+ * por la órbita baja, donde las dos muestran la misma vista, y sin parar la cámara: se deja encima
+ * una foto del último fotograma que sigue haciendo zoom al ritmo que llevaba la cámara, se cambia
+ * la escena por debajo y, cuando la nueva ya se ve, empieza donde va la foto y esta se funde. Así
+ * no hay corte ni parada, y el tirón de montar la escena queda oculto (lib/mapa3d/transito.ts). La
+ * vuelta al globo es lo mismo al revés.
  *
  * Esquinas (como en el 2D): arriba izq. indicación · arriba der. controles · abajo izq. clave ·
  * abajo der. fuentes, escala (cenital) y brújula. La ficha se abre junto al punto tocado, sin tapar
@@ -23,7 +24,7 @@
  * escena desplaza su centro. En el terreno el lienzo solo se dibuja cuando algo cambia (frameloop
  * «demand»); lo que cambia en cada fotograma va al almacén `vivo` (ver lib/mapa3d/almacen.ts).
  */
-import { useProgress, useTexture } from "@react-three/drei";
+import { useProgress } from "@react-three/drei";
 import { Canvas, useThree } from "@react-three/fiber";
 import type { EffectComposer as Compositor } from "postprocessing";
 import {
@@ -54,7 +55,6 @@ import { useTransicion } from "@/hooks/useTransicion";
 import { useRuta } from "@/hooks/useRuta";
 import { calcularContornos } from "@/lib/mapa/contornos";
 import { cargarDem } from "@/lib/mapa/cargarDatos";
-import { RUTA_CONTEXTO } from "@/lib/mapa/contexto";
 import { perfilRuta } from "@/lib/mapa/perfil";
 import { acotar, CELDA_HABITAT, indice, type Celda } from "@/lib/mapa/geo";
 import { enIdioma, useIdioma } from "@/lib/i18n";
@@ -63,11 +63,12 @@ import { DESTINOS } from "@/lib/data/targets";
 import { FOTOS } from "@/lib/data/fotos";
 import { cargarAlturas, cargarAlturasGale, cargarEntorno } from "@/lib/mapa3d/alturas";
 import { crearAlmacen, estadoVivoInicial, useAlmacen, type Almacen, type EstadoVivo, type PuntoPx } from "@/lib/mapa3d/almacen";
-import { ponerAnisotropia, ponerSRGB } from "@/lib/mapa3d/imperativo";
 import { regionComoAlturas, type Relieve } from "@/lib/mapa3d/relieve";
+import { conZoom } from "@/lib/mapa3d/imperativo";
+import { puente, TRANSITO, type FotoTransito } from "@/lib/mapa3d/transito";
 import { CURVA_PANEL, DURACION_PANEL, SIN_HUECO } from "@/lib/panel";
 import EscenaGlobo from "./EscenaGlobo";
-import EscenaTerreno, { RUTA_NORMAL, RUTA_REGION, rutaEntorno, rutaZona, type Orden, type Vista } from "./EscenaTerreno";
+import EscenaTerreno, { useTexturasTerreno, type Orden, type Vista } from "./EscenaTerreno";
 import { precalentarTerreno } from "./Terreno";
 import Efectos from "./Efectos";
 import Controles3D from "./Controles3D";
@@ -151,17 +152,13 @@ function Plano2D(props: MapaMarteProps) {
  * Sube a la GPU las imágenes del terreno mientras se ve el globo (con su espacio de color ya puesto,
  * para no subirlas dos veces): al bajar no hay que esperar a ninguna.
  */
-function PrecargaTerreno({ color, otras }: { color: string[]; otras: string[] }) {
-  const gl = useThree((s) => s.gl);
-  useTexture([...color, ...otras], (ts) => {
-    const todas = Array.isArray(ts) ? ts : [ts];
-    ponerSRGB(...todas.slice(0, color.length));
-    ponerAnisotropia(gl.capabilities.getMaxAnisotropy(), ...todas);
-  });
+function PrecargaTerreno({ movil, entorno, region }: { movil: boolean; entorno: boolean; region: boolean }) {
+  useTexturasTerreno(movil, entorno, region);
   return null;
 }
 
-type Captura = (destino: HTMLCanvasElement) => void;
+/** `ancho`: campo de más con el que se saca la foto (1 = lo que se ve) */
+type Captura = (destino: HTMLCanvasElement, ancho: number) => void;
 
 /**
  * Deja en `registro` una función que copia en un lienzo 2D lo que se ve ahora mismo. Vuelve a
@@ -172,9 +169,13 @@ function Capturador({ registroRef, compositorRef }: { registroRef: RefObject<Cap
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
   useEffect(() => {
-    registroRef.current = (destino) => {
-      if (compositorRef.current) compositorRef.current.render(0);
-      else gl.render(scene, camera);
+    registroRef.current = (destino, ancho) => {
+      const dibujar = () => {
+        if (compositorRef.current) compositorRef.current.render(0);
+        else gl.render(scene, camera);
+      };
+      if (ancho === 1) dibujar();
+      else conZoom(camera, 1 / ancho, dibujar);
       const origen = gl.domElement;
       if (destino.width !== origen.width) destino.width = origen.width;
       if (destino.height !== origen.height) destino.height = origen.height;
@@ -186,6 +187,13 @@ function Capturador({ registroRef, compositorRef }: { registroRef: RefObject<Cap
   }, [registroRef, compositorRef, gl, scene, camera]);
   return null;
 }
+
+/** Máscara que difumina los bordes de la foto (al alejarse puede encoger hasta que asoman) */
+const BORDES_FOTO =
+  "linear-gradient(to right, transparent, #000 7%, #000 93%, transparent), linear-gradient(to bottom, transparent, #000 7%, #000 93%, transparent)";
+
+/** Duración (s) de la animación de la foto: de sobra para montar la otra escena */
+const DUR_FOTO = 4;
 
 type Fase = "globo" | "descenso" | "terreno";
 interface Seleccion {
@@ -245,6 +253,7 @@ function Mapa3D({
   const [fuentesAbiertas, setFuentesAbiertas] = useState(false);
   const [relieve, setRelieve] = useState<Relieve | null>(null);
   const [regionHd, setRegionHd] = useState<Texture | null>(null);
+  const [globoHd, setGloboHd] = useState<Texture | null>(null);
   const [dem, setDem] = useState<Float32Array | null>(null);
   const fotoRef = useRef<HTMLCanvasElement>(null);
   const capturar = useRef<Captura | null>(null);
@@ -285,27 +294,24 @@ function Mapa3D({
   useEffect(() => {
     if (relieve && !cargaInicial) precalentarTerreno(relieve, movil ? 2 : 1);
   }, [relieve, movil, cargaInicial]);
-  // En escritorio, la región de Gale a más resolución (para el globo y para el terreno), cuando ya se ve el globo
+  // En escritorio, el planeta y la región de Gale a más resolución, cuando ya se ve el globo. Se
+  // cargan una vez y se quedan en la GPU: al volver del terreno el globo no espera a ninguna
   useEffect(() => {
     if (movil || cargaInicial) return;
     let vivo = true;
-    new TextureLoader().load("/data/3d/gale_color_4k.jpg", (t) => {
-      if (!vivo) return t.dispose();
-      t.colorSpace = SRGBColorSpace;
-      t.anisotropy = 8;
-      setRegionHd(t);
-    });
+    const cargar = (ruta: string, poner: (t: Texture) => void) =>
+      new TextureLoader().load(ruta, (t) => {
+        if (!vivo) return t.dispose();
+        t.colorSpace = SRGBColorSpace;
+        t.anisotropy = 8;
+        poner(t);
+      });
+    cargar("/data/3d/marte_8k.jpg", setGloboHd);
+    cargar("/data/3d/gale_color_4k.jpg", setRegionHd);
     return () => {
       vivo = false;
     };
   }, [movil, cargaInicial]);
-  const precarga = useMemo(
-    () => ({
-      color: [RUTA_CONTEXTO, rutaZona(movil), ...(relieve?.entorno ? [rutaEntorno(movil)] : []), ...(relieve?.region ? [RUTA_REGION] : [])],
-      otras: [RUTA_NORMAL],
-    }),
-    [movil, relieve],
-  );
   useEffect(() => {
     const el = contRef.current;
     if (!el) return;
@@ -353,27 +359,82 @@ function Mapa3D({
   useEffect(() => onFase?.(faseAviso), [faseAviso, onFase]);
   const alAsentar = useCallback(() => setAsentado(true), []);
 
-  // Imagen fija del último fotograma, encima del lienzo mientras se cambia de escena por debajo
-  const ponerFoto = useCallback(() => {
+  // Foto del último fotograma, encima del lienzo mientras se cambia de escena por debajo. No se queda
+  // quieta: sigue el zoom que llevaba la cámara (ver lib/mapa3d/transito.ts). `ritmo` > 0 al bajar al
+  // terreno (la foto se acerca) y < 0 al volver al globo (se aleja; se saca con campo de más).
+  const fotoAnim = useRef<{ anim: Animation; ritmo: number } | null>(null);
+  const fotoAncho = useRef(1);
+  const cambio = useRef(0);
+  useEffect(() => () => cancelAnimationFrame(cambio.current), []);
+  const ponerFoto = useCallback((ritmo: number) => {
     const c = fotoRef.current;
     if (!c) return;
-    capturar.current?.(c);
+    const ancho = ritmo < 0 ? TRANSITO.ancho : 1;
+    capturar.current?.(c, ancho);
+    fotoAnim.current?.anim.cancel();
+    fotoAnim.current = null;
+    fotoAncho.current = ancho;
+    const mascara = ritmo < 0 ? BORDES_FOTO : "";
+    c.style.maskImage = mascara;
+    c.style.maskComposite = mascara ? "intersect" : "";
     c.style.transition = "none";
+    c.style.transform = `scale(${ancho})`;
     c.style.opacity = "1";
+    if (ritmo === 0 || typeof c.animate !== "function") return;
+    // Mientras se monta la otra escena: animación de transformación (la compone el navegador aunque
+    // el hilo principal esté ocupado), con el zoom de `puente` muestreado
+    const tope = ritmo < 0 ? Math.log(ancho) : TRANSITO.tope;
+    const n = 24;
+    const fotogramas = Array.from({ length: n + 1 }, (_, i) => {
+      const { z } = puente((i / n) * DUR_FOTO, Math.abs(ritmo), tope);
+      return { transform: `scale(${ancho * Math.exp(Math.sign(ritmo) * z)})` };
+    });
+    fotoAnim.current = { anim: c.animate(fotogramas, { duration: DUR_FOTO * 1000, fill: "forwards", easing: "linear" }), ritmo };
   }, []);
   const quitarFoto = useCallback(() => {
     const c = fotoRef.current;
     if (!c) return;
-    c.style.transition = `opacity ${reducido ? 300 : 750}ms ease-in-out`;
+    c.style.transition = `opacity ${reducido ? 300 : TRANSITO.fundido}ms ease-in-out`;
     c.style.opacity = "0";
   }, [reducido]);
+  const foto = useMemo<FotoTransito>(
+    () => ({
+      estado: () => {
+        const a = fotoAnim.current;
+        if (!a) return { z: 0, v: 0 };
+        const t = Number(a.anim.currentTime ?? 0) / 1000;
+        const signo = Math.sign(a.ritmo);
+        const { z, v } = puente(t, Math.abs(a.ritmo), signo < 0 ? Math.log(fotoAncho.current) : TRANSITO.tope);
+        return { z: signo * z, v: signo * v };
+      },
+      seguir: (z) => {
+        const c = fotoRef.current;
+        if (!c) return;
+        c.style.transform = `scale(${fotoAncho.current * Math.exp(z)})`;
+        fotoAnim.current?.anim.cancel();
+        fotoAnim.current = null;
+      },
+    }),
+    [],
+  );
+  /**
+   * Cambia de escena con la foto puesta. El cambio espera a que la foto (y su animación) hayan
+   * salido en pantalla: si no, el montaje de la otra escena bloquearía antes de que se vea.
+   */
+  const cambiarCon = useCallback(
+    (ritmo: number, cambiar: () => void) => {
+      ponerFoto(ritmo);
+      cancelAnimationFrame(cambio.current);
+      cambio.current = requestAnimationFrame(() => {
+        cambio.current = requestAnimationFrame(cambiar);
+      });
+    },
+    [ponerFoto],
+  );
 
   // Se baja a la zona de estudio tocando el rótulo de Gale en el globo (no hay descenso automático).
-  // Cuando la cámara del globo llega a la órbita baja, se cambia al terreno, que empieza en esa vista.
-  const alLlegar = useCallback(() => {
-    ponerFoto();
-    setFase("terreno");
-  }, [ponerFoto]);
+  // Cuando la cámara del globo llega a la órbita baja, se cambia al terreno, que sigue bajando.
+  const alLlegar = useCallback((ritmo: number) => cambiarCon(ritmo, () => setFase("terreno")), [cambiarCon]);
   // Al globo: el panel sale ya, la cámara sube a la órbita baja y ahí se cambia de escena
   const volverAlGlobo = () => {
     if (saliendo) return;
@@ -381,15 +442,18 @@ function Mapa3D({
     vivo.set({ hover: null });
     setSaliendo(true);
   };
-  const alSalir = useCallback(() => {
-    ponerFoto();
-    setIntro(true);
-    setAsentado(false);
-    setSaliendo(false);
-    setGloboEnReposo(false);
-    setDesdeOrbita(true);
-    setFase("globo");
-  }, [ponerFoto]);
+  const alSalir = useCallback(
+    (ritmo: number) =>
+      cambiarCon(-ritmo, () => {
+        setIntro(true);
+        setAsentado(false);
+        setSaliendo(false);
+        setGloboEnReposo(false);
+        setDesdeOrbita(true);
+        setFase("globo");
+      }),
+    [cambiarCon],
+  );
   const alReposarGlobo = useCallback(() => {
     setGloboEnReposo(true);
     setDesdeOrbita(false);
@@ -512,9 +576,9 @@ function Mapa3D({
           onPointerMissed={() => fase === "terreno" && !saliendo && setSel(null)}
         >
           <Capturador registroRef={capturar} compositorRef={compositor} />
-          {!enTerreno && !cargaInicial && (
+          {!enTerreno && !cargaInicial && relieve && (
             <Suspense fallback={null}>
-              <PrecargaTerreno color={precarga.color} otras={precarga.otras} />
+              <PrecargaTerreno movil={movil} entorno={relieve.entorno !== null} region={relieve.region !== null} />
             </Suspense>
           )}
           <Suspense fallback={null}>
@@ -522,9 +586,10 @@ function Mapa3D({
               <EscenaGlobo
                 descendiendo={fase === "descenso"}
                 desdeOrbita={desdeOrbita}
-                hd={!movil}
+                colorHd={globoHd}
                 reducido={reducido}
                 galeHd={regionHd}
+                foto={foto}
                 onLlegada={alLlegar}
                 onIrAGale={irAGale}
                 onLista={quitarFoto}
@@ -536,6 +601,7 @@ function Mapa3D({
                 relieve={relieve}
                 regionHd={regionHd}
                 saliendo={saliendo}
+                foto={foto}
                 onLista={quitarFoto}
                 onSalida={alSalir}
                 fotograma={fotograma}
@@ -566,8 +632,8 @@ function Mapa3D({
             {post && <Efectos terreno={enTerreno} compositor={compositor} />}
           </Suspense>
         </Canvas>
-        {/* Imagen fija del cambio de escena (ver arriba) */}
-        <canvas ref={fotoRef} aria-hidden className="pointer-events-none absolute inset-0 z-10 h-full w-full opacity-0" />
+        {/* Foto del cambio de escena (ver arriba) */}
+        <canvas ref={fotoRef} aria-hidden className="pointer-events-none absolute inset-0 z-10 h-full w-full opacity-0 will-change-transform" />
 
         {/* ---- Interfaz: ocupa la parte que no tapa el panel y se aparta con él ---- */}
         <div
