@@ -4,7 +4,7 @@
 
 **El mapa de Marte según el cuerpo que lo pisa**
 
-Proyecto para el [NASA Space Apps Challenge 2026](https://www.spaceappschallenge.org/2026/) · Madrid<br>
+**Nuestro proyecto para el [NASA Space Apps Challenge 2026](https://www.spaceappschallenge.org/2026/)** · Madrid<br>
 Reto [*Interplanetary survival guide: Martian map*](https://www.spaceappschallenge.org/2026/challenges/interplanetary-survival-guide-martian-map/)
 
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-000?logo=nextdotjs)
@@ -48,12 +48,10 @@ Los primeros astronautas que pisen Marte llegarán tras unos seis meses sin grav
 <tr>
 <td><img src="docs/img/concepto-nave.jpg" alt="Concepto: la herramienta en una pantalla de la nave"></td>
 <td><img src="docs/img/concepto-muneca.jpg" alt="Concepto: la herramienta en una pantalla de muñeca durante una salida"></td>
-<td><img src="docs/img/concepto-visor.jpg" alt="Concepto: la herramienta proyectada en el visor del casco"></td>
 </tr>
 <tr>
 <td align="center">En la nave, al planificar la salida</td>
 <td align="center">En la muñeca, durante la salida</td>
-<td align="center">En el visor del casco</td>
 </tr>
 </table>
 
@@ -167,7 +165,7 @@ src/
 └── components/
     ├── mapa3d/               Mapa 3D: globo, descenso, terreno, líneas, etiquetas, controles
     ├── mapa/                 Mapa 2D de respaldo, ficha, clave, visor de fotos, fuentes
-    └── panel/                Cabecera, sol, tripulación, ritmo y destinos de la misión
+    └── panel/                Sol, tripulación, ritmo y destinos de la misión
 public/
 ├── data/                     DEM, imágenes y alturas ya procesados (ver su README)
 └── fotos/                    Fotos de Curiosity de cada punto de referencia
@@ -210,5 +208,5 @@ Todos los datos son públicos. El DEM de Gale, los mosaicos HiRISE y MSL y las p
 
 ## Equipo
 
-Land & Stand · NASA Space Apps Challenge 2026, Madrid.<br>
+Land & Stand es nuestro proyecto para el NASA Space Apps Challenge 2026, Madrid.<br>
 Modelo científico y referencia: **Katrina Espinar Herranz**.

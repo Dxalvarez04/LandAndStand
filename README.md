@@ -4,7 +4,7 @@
 
 **Mars as it looks to the body that walks it**
 
-A project for the [NASA Space Apps Challenge 2026](https://www.spaceappschallenge.org/2026/) · Madrid<br>
+**Our team's project for the [NASA Space Apps Challenge 2026](https://www.spaceappschallenge.org/2026/)** · Madrid<br>
 Challenge: [*Interplanetary survival guide: Martian map*](https://www.spaceappschallenge.org/2026/challenges/interplanetary-survival-guide-martian-map/)
 
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-000?logo=nextdotjs)
@@ -47,12 +47,10 @@ The first astronauts to set foot on Mars will arrive after some six months witho
 <tr>
 <td><img src="docs/img/concepto-nave.jpg" alt="Concept: the tool on a screen inside the spacecraft"></td>
 <td><img src="docs/img/concepto-muneca.jpg" alt="Concept: the tool on a wrist display during an EVA"></td>
-<td><img src="docs/img/concepto-visor.jpg" alt="Concept: the tool projected on the helmet visor"></td>
 </tr>
 <tr>
 <td align="center">On board, planning the EVA</td>
 <td align="center">On the wrist, during the EVA</td>
-<td align="center">On the helmet visor</td>
 </tr>
 </table>
 
@@ -166,7 +164,7 @@ src/
 └── components/
     ├── mapa3d/               3D map: globe, descent, terrain, lines, labels, controls
     ├── mapa/                 2D fallback map, info card, legend, photo viewer, sources
-    └── panel/                Header, sol, crew, pace and mission destinations
+    └── panel/                Sol, crew, pace and mission destinations
 public/
 ├── data/                     Processed elevation, images and heights (see its README)
 └── fotos/                    Curiosity images of each landmark
@@ -211,5 +209,5 @@ All data is public. The Gale elevation model, the HiRISE and MSL mosaics and the
 
 ## Team
 
-Land & Stand · NASA Space Apps Challenge 2026, Madrid.<br>
+Land & Stand is our team's project for the NASA Space Apps Challenge 2026, Madrid.<br>
 Scientific model and reference: **Katrina Espinar Herranz**.
