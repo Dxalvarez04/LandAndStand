@@ -17,3 +17,21 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
+
+/*
+ * Portada: la página se desplaza sobre el globo y el índice de secciones dice dónde se está, así
+ * que la barra de desplazamiento no se dibuja (tampoco cambia el ancho al bloquear el scroll en la demo).
+ */
+html {
+  scrollbar-width: none;
+}
+html::-webkit-scrollbar {
+  display: none;
+}
+
+/* Rótulo de Gale en el globo: entra fundido cuando la cámara ha llegado */
+@keyframes aparecer {
+  from {
+    opacity: 0;
+  }
+}

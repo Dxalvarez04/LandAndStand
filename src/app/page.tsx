@@ -1,7 +1,15 @@
 "use client";
 
 /**
- * Pantalla de la nave: fija, sin scroll de página.
+ * Una sola página con dos modos sobre el mismo mapa 3D:
+ *   · Portada: la presentación del proyecto. La página se desplaza sobre el globo de Marte, que va
+ *     detrás (fijo) y que el scroll gira y mueve sección a sección (components/portada/Portada.tsx).
+ *     En la última sección se toca el planeta y empieza la demo.
+ *   · Demo: la pantalla de la nave, fija, sin scroll de página. Empieza en el globo, ya solo con el
+ *     planeta (se puede girar) y el rótulo de Gale; al tocar el rótulo se baja a la zona de estudio.
+ *     Desde el globo se puede volver a la portada (al punto donde se dejó).
+ *
+ * Pantalla de la nave:
  *   · Mapa (persona 2): ocupa toda la pantalla.
  *   · Panel (persona 3): flota encima, en una columna a la derecha en horizontal y en la mitad
  *     inferior en vertical (móvil). Se esconde y se saca con la pestaña de su borde. Se lee de
@@ -39,9 +47,11 @@ import { DESTINOS_MISION, type DestinoMision } from "@/lib/data/targets";
 import { DURACION_PANEL, PESTANA_PX } from "@/lib/panel";
 import { useIdioma } from "@/lib/i18n";
 import { jost, plexMono } from "@/components/mapa/fuente";
+import Portada from "@/components/portada/Portada";
 
 type PuntoMapa = { fila: number; columna: number };
 type FaseMapa = "globo" | "descenso" | "terreno";
+type Modo = "portada" | "demo";
 
 // El mapa 3D (WebGL) solo existe en el navegador; si no hay WebGL usa el mapa 2D por dentro
 const MapaMarte3D = dynamic(() => import("@/components/mapa3d/MapaMarte3D"), {
@@ -107,6 +117,26 @@ export default function Home() {
   const contadorDestinos = useRef(0);
   const [faseMapa, setFaseMapa] = useState<FaseMapa>("globo");
   const alCambiarFase = useCallback((f: FaseMapa) => setFaseMapa(f), []);
+
+  // ---- Portada y demo ----
+  const [modo, setModo] = useState<Modo>("portada");
+  // Posición del scroll de la portada en su recorrido: la escribe la portada y la lee el globo en cada fotograma
+  const recorridoRef = useRef(0);
+  const [carga, setCarga] = useState<"globo" | "plano" | null>(null);
+  const alCargar = useCallback((tipo: "globo" | "plano") => setCarga(tipo), []);
+  const entrarEnDemo = useCallback(() => setModo("demo"), []);
+  const volverAPortada = useCallback(() => setModo("portada"), []);
+  // En la demo la página no se desplaza (se queda donde estaba la portada, para volver ahí)
+  useEffect(() => {
+    if (modo !== "demo") return;
+    const html = document.documentElement;
+    html.style.overflow = "hidden";
+    html.style.overscrollBehavior = "none";
+    return () => {
+      html.style.overflow = "";
+      html.style.overscrollBehavior = "";
+    };
+  }, [modo]);
   const { resultado, progreso, calculando, error, pedirRuta } =
     useModelo(estado);
   const set = (parcial: Partial<Estado>) =>
@@ -114,7 +144,7 @@ export default function Home() {
 
   // ---- Panel: disponible en la zona de estudio; la tripulación lo esconde o lo saca ----
   const [panelOculto, setPanelOculto] = useState(false);
-  const disponible = faseMapa === "terreno";
+  const disponible = faseMapa === "terreno" && modo === "demo";
   const panelVisible = disponible && !panelOculto;
   const apaisado = useSyncExternalStore(suscribirOrientacion, esApaisado, () => true);
   const panelRef = useRef<HTMLElement>(null);
@@ -187,13 +217,18 @@ export default function Home() {
 
   return (
     <main
-      className={`${jost.variable} ${plexMono.variable} relative h-dvh w-full overflow-hidden bg-[#060a17]`}
+      className={`${jost.variable} ${plexMono.variable} relative w-full bg-black`}
       style={{
         fontFamily: "var(--font-jost), Futura, 'Century Gothic', sans-serif",
       }}
     >
-      {/* ---- Zona 1 · Mapa (persona 2) ---- */}
-      <section aria-label={t.mapaAria} className="absolute inset-0">
+      {/* ---- Zona 1 · Mapa (persona 2): fijo detrás de la portada, y la pantalla entera en la demo ---- */}
+      {/* Sin WebGL no hay globo: el mapa 2D no se enseña hasta entrar en la demo */}
+      <section
+        aria-label={t.mapaAria}
+        inert={modo === "portada"}
+        className={`fixed inset-0 transition-opacity duration-700 motion-reduce:transition-none ${modo === "portada" && carga === "plano" ? "opacity-0" : "opacity-100"}`}
+      >
         <MapaMarte3D
           resultado={resultado}
           sol={estado.sol}
@@ -209,13 +244,20 @@ export default function Home() {
           onFase={alCambiarFase}
           hueco={hueco}
           enfoque={enfoque}
+          portada={modo === "portada"}
+          recorridoRef={recorridoRef}
+          onPortada={volverAPortada}
+          onCargado={alCargar}
         />
       </section>
+
+      {/* ---- Portada: da la altura de la página; sus textos van en una capa fija encima del mapa ---- */}
+      <Portada activa={modo === "portada"} recorridoRef={recorridoRef} carga={carga} onEntrar={entrarEnDemo} />
 
       {/* ---- Zona 2 · Panel (persona 3) ---- */}
       {/* Se desliza con transform (sin recalcular el diseño); la pestaña va fuera de la parte inerte */}
       <div
-        className={`absolute inset-x-0 bottom-0 z-40 h-[40dvh] transition-transform ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none landscape:inset-x-auto landscape:right-0 landscape:top-0 landscape:h-full landscape:w-[min(440px,34vw)] ${
+        className={`fixed inset-x-0 bottom-0 z-40 h-[40dvh] transition-transform ease-[cubic-bezier(0.65,0,0.35,1)] motion-reduce:transition-none landscape:inset-x-auto landscape:right-0 landscape:top-0 landscape:h-full landscape:w-[min(440px,34vw)] ${
           panelVisible
             ? "translate-x-0 translate-y-0"
             : disponible

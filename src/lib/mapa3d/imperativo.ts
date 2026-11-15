@@ -3,7 +3,7 @@
  * aparte para que los componentes no asignen propiedades a valores que React considera inmutables
  * (props, resultados de hooks); three.js necesita estas mutaciones y no afectan al render de React.
  */
-import { SRGBColorSpace, type Camera, type PerspectiveCamera, type Texture, type WebGLRenderer } from "three";
+import { SRGBColorSpace, type Camera, type PerspectiveCamera, type Texture, type Vector3, type WebGLRenderer } from "three";
 
 export function ajustarCamara(c: PerspectiveCamera, near: number, far: number, fov = 40) {
   c.near = near;
@@ -79,4 +79,9 @@ export function sombrasFijas(gl: WebGLRenderer, fijas: boolean) {
 /** Hace que el próximo fotograma vuelva a dibujar el mapa de sombras. */
 export function redibujarSombras(gl: WebGLRenderer) {
   gl.shadowMap.needsUpdate = true;
+}
+
+/** Pone el «arriba» de la cámara (giro sobre su eje). Quien la controle tiene que enterarse después. */
+export function ponerArriba(c: Camera, arriba: Vector3) {
+  c.up.copy(arriba);
 }

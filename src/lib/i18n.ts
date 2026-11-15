@@ -38,6 +38,8 @@ const es = {
   volverGlobo: "Volver al globo de Marte",
   craterGale: "Cráter Gale",
   entrarZona: "Entrar a la zona de estudio",
+  portada: "Proyecto",
+  volverPortada: "Volver a la presentación del proyecto",
   elegirPunto: "Toca el punto del destino nuevo",
   elegirPuntoAyuda: "Verás su probabilidad al pasar por encima",
   pista3d: "Toca el terreno o un destino para saber si puedes ir y volver",
@@ -168,6 +170,70 @@ const es = {
   creditos:
     "Datos: USGS Astrogeology (DEM 1 m) · HiRISE, NASA/JPL‑Caltech/UArizona · Curiosity, NASA/JPL‑Caltech/MSSS",
   evento: "NASA Space Apps Challenge 2026 · Madrid",
+  // Portada (presentación del proyecto, antes de la demo)
+  presentacion: {
+    aria: "Presentación del proyecto",
+    probar: "Ver el mapa",
+    secciones: "Secciones",
+    irA: (n: string) => `Ir a: ${n}`,
+    desliza: "Desliza",
+    evento: "NASA Space Apps Challenge 2026, Madrid",
+    inicio: {
+      nombre: "Inicio",
+      subtitulo: "El mapa de Marte según el cuerpo que lo pisa.",
+    },
+    problema: {
+      nombre: "El problema",
+      titulo: "Seis meses sin gravedad",
+      texto:
+        "Los primeros astronautas que pisen Marte llegarán tras unos seis meses sin gravedad, con menos forma aeróbica, peor equilibrio y menos fuerza. Tardarán días o semanas en recuperarse.",
+      texto2: "Y la Tierra queda hasta a 24 minutos de radio. Nadie podrá guiarles en directo: la decisión de salir a pie es suya.",
+    },
+    idea: {
+      nombre: "La idea",
+      titulo: "Un mapa que cambia con el cuerpo",
+      texto:
+        "Sobre el terreno real del cráter Gale, Land & Stand muestra qué probabilidad tiene cada tripulación de ir a pie a cada punto y volver, según el sol de la misión, quién camina y a qué intensidad.",
+      ejemplo:
+        "Con la tripulación de ejemplo, el destino M1 tiene un 100 % de probabilidad de ida y vuelta desde el sol 1. El M6, a 1,8 km y unos 140 m más arriba, sigue siendo poco probable el sol 30.",
+    },
+    modelo: {
+      nombre: "Cómo funciona",
+      titulo: "Seis capas, 300 escenarios",
+      capas: [
+        ["Terreno", "110 × 110 celdas de 32 m"],
+        ["Fisiología", "forma y equilibrio, sol 1 a 30"],
+        ["Marcha con traje", "velocidad y gasto por pendiente"],
+        ["Grafo", "8 vecinos por celda"],
+        ["Alcance", "ida y vuelta de menor energía"],
+        ["Incertidumbre", "300 sorteos de Monte Carlo"],
+      ] as [string, string][],
+      nota: "Todo se calcula en tu navegador, repartido entre varios Web Workers. Un grupo de tres tarda menos de un segundo.",
+    },
+    mision: {
+      nombre: "En la misión",
+      titulo: "De la nave a la muñeca",
+      usos: [
+        ["En la nave, al planificar la salida.", "Concepto: la herramienta en una pantalla de la nave"],
+        ["En la muñeca, durante la salida.", "Concepto: la herramienta en una pantalla de muñeca durante una salida"],
+      ] as [string, string][],
+      nota: "Imágenes conceptuales generadas con IA a partir de capturas reales de la herramienta. No son fotografías.",
+    },
+    demo: {
+      nombre: "Demo",
+      titulo: "Aterriza en Gale",
+      lugar: "5,4° S  137,8° E",
+      texto:
+        "El cráter que Curiosity explora desde 2012. Elige el sol, quién sale y a qué intensidad, y mira hasta dónde puede ir y volver.",
+      tocar: "Toca el planeta",
+      tocarAyuda: "Empieza en el globo; toca el nombre del cráter para bajar.",
+      abrir: "Abrir el mapa",
+      boton: "Abrir la demo: el globo de Marte",
+      cargando: "Cargando Marte…",
+      codigo: "Código en GitHub",
+      datos: "Datos públicos de la NASA, el USGS y la ESA",
+    },
+  },
   // Fuentes
   fuentesTitulo: "Fuentes oficiales",
   fuentesAyuda: "Datos públicos de la NASA y del USGS que usa el mapa",
@@ -225,6 +291,8 @@ const en: Textos = {
   volverGlobo: "Back to the Mars globe",
   craterGale: "Gale crater",
   entrarZona: "Enter the study area",
+  portada: "Project",
+  volverPortada: "Back to the project overview",
   elegirPunto: "Tap the point for the new destination",
   elegirPuntoAyuda: "Hover to see its probability",
   pista3d: "Tap the ground or a destination to see if you can get there and back",
@@ -348,6 +416,69 @@ const en: Textos = {
   creditos:
     "Data: USGS Astrogeology (1 m DEM) · HiRISE, NASA/JPL‑Caltech/UArizona · Curiosity, NASA/JPL‑Caltech/MSSS",
   evento: "NASA Space Apps Challenge 2026 · Madrid",
+  presentacion: {
+    aria: "Project overview",
+    probar: "See the map",
+    secciones: "Sections",
+    irA: (n) => `Go to: ${n}`,
+    desliza: "Scroll",
+    evento: "NASA Space Apps Challenge 2026, Madrid",
+    inicio: {
+      nombre: "Home",
+      subtitulo: "Mars as it looks to the body that walks it.",
+    },
+    problema: {
+      nombre: "The problem",
+      titulo: "Six months without gravity",
+      texto:
+        "The first astronauts to set foot on Mars will arrive after some six months without gravity, with lower aerobic fitness, worse balance and less strength. Recovering takes days or weeks.",
+      texto2: "And Earth is up to 24 light-minutes away. Nobody can guide them in real time: the call to go out on foot is theirs.",
+    },
+    idea: {
+      nombre: "The idea",
+      titulo: "A map that changes with the body",
+      texto:
+        "On the real terrain of Gale crater, Land & Stand shows how likely each crew is to walk to every point and back, depending on the mission sol, who walks and how hard.",
+      ejemplo:
+        "With the example crew, destination M1 has a 100% round-trip probability from sol 1. M6, 1.8 km away and about 140 m higher, is still unlikely on sol 30.",
+    },
+    modelo: {
+      nombre: "How it works",
+      titulo: "Six layers, 300 scenarios",
+      capas: [
+        ["Terrain", "110 × 110 cells of 32 m"],
+        ["Physiology", "fitness and balance, sol 1 to 30"],
+        ["Suited walking", "speed and energy cost by slope"],
+        ["Graph", "8 neighbours per cell"],
+        ["Reachability", "lowest-energy round trip"],
+        ["Uncertainty", "300 Monte Carlo draws"],
+      ],
+      nota: "It all runs in your browser, split across several Web Workers. A group of three takes under a second.",
+    },
+    mision: {
+      nombre: "On the mission",
+      titulo: "From the ship to the wrist",
+      usos: [
+        ["On board, planning the EVA.", "Concept: the tool on a screen inside the spacecraft"],
+        ["On the wrist, during the EVA.", "Concept: the tool on a wrist display during an EVA"],
+      ],
+      nota: "Concept images generated with AI from real screenshots of the tool. They are not photographs.",
+    },
+    demo: {
+      nombre: "Demo",
+      titulo: "Land on Gale",
+      lugar: "5.4° S  137.8° E",
+      texto:
+        "The crater Curiosity has been exploring since 2012. Choose the sol, who walks and how hard, and see how far they can go and come back.",
+      tocar: "Tap the planet",
+      tocarAyuda: "You start on the globe; tap the crater's name to fly down.",
+      abrir: "Open the map",
+      boton: "Open the demo: the Mars globe",
+      cargando: "Loading Mars…",
+      codigo: "Code on GitHub",
+      datos: "Public data from NASA, USGS and ESA",
+    },
+  },
   fuentesTitulo: "Official sources",
   fuentesAyuda: "Public NASA and USGS data used by the map",
   volverMapa: "Back to the map",

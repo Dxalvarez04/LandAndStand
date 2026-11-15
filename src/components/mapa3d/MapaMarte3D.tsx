@@ -134,8 +134,9 @@ export default memo(MapaMarte3D);
 
 /** Plan B en 2D: no hay globo, así que el panel se ve desde el principio. El mapa 2D sí se ajusta al hueco. */
 function Plano2D(props: MapaMarteProps) {
-  const { onFase, hueco = SIN_HUECO } = props;
+  const { onFase, onCargado, hueco = SIN_HUECO } = props;
   useEffect(() => onFase?.("terreno"), [onFase]);
+  useEffect(() => onCargado?.("plano"), [onCargado]);
   return (
     <div className="relative h-full w-full">
       <div
@@ -227,6 +228,10 @@ function Mapa3D({
   enfoque = null,
   onAgregarDestino,
   onSeleccionDestino,
+  portada = false,
+  recorridoRef,
+  onPortada,
+  onCargado,
 }: MapaMarteProps) {
   const movil = useSyncExternalStore(sinSuscripcion, esMovil, () => false);
   const reducido = useSyncExternalStore(sinSuscripcion, esReducido, () => false);
@@ -265,6 +270,9 @@ function Mapa3D({
   // La pantalla de carga solo cubre la primera carga (el globo); las siguientes no la vuelven a mostrar
   const [cargaInicial, setCargaInicial] = useState(true);
   if (cargaInicial && !cargando && progress >= 100) setCargaInicial(false);
+  useEffect(() => {
+    if (!cargaInicial) onCargado?.("globo");
+  }, [cargaInicial, onCargado]);
 
   // El hueco solo cuenta en el terreno (en el globo no hay panel); objeto estable para la escena
   const { der, abajo } = huecoProp;
@@ -463,6 +471,9 @@ function Mapa3D({
     setFase("descenso");
   };
 
+  // Sin portada (se ha quitado o no se usa) el recorrido no se lee
+  const [sinRecorrido] = useState(() => ({ current: 0 }));
+
   // El panel pide un punto para un destino nuevo: se cierra la ficha y, si estábamos en el globo,
   // se baja a la zona de estudio
   const [eligiendoAntes, setEligiendoAntes] = useState(seleccionandoDestino);
@@ -594,7 +605,9 @@ function Mapa3D({
                 onIrAGale={irAGale}
                 onLista={quitarFoto}
                 onReposo={alReposarGlobo}
-                mostrarMarca={!cargaInicial}
+                mostrarMarca={!cargaInicial && !portada}
+                portada={portada}
+                recorridoRef={recorridoRef ?? sinRecorrido}
               />
             ) : (
               <EscenaTerreno
@@ -728,26 +741,49 @@ function Mapa3D({
             </div>
           )}
 
-          {/* ---- Interfaz del globo: se retira durante el descenso y el regreso ---- */}
+          {/* ---- Interfaz del globo: se retira durante el descenso y el regreso, y en la portada ---- */}
           {!enTerreno && !cargaInicial && (
             <div
-              inert={fase !== "globo" || !globoEnReposo}
-              className={`absolute inset-0 transition-opacity duration-500 motion-reduce:transition-none ${fase === "globo" && globoEnReposo ? "opacity-100" : "opacity-0"}`}
+              inert={fase !== "globo" || !globoEnReposo || portada}
+              className={`absolute inset-0 transition-opacity duration-500 motion-reduce:transition-none ${fase === "globo" && globoEnReposo && !portada ? "opacity-100" : "opacity-0"}`}
             >
+              {/* Volver a la portada: arriba a la izquierda, donde en el terreno está «Globo de Marte» */}
+              {onPortada && (
+                <button
+                  type="button"
+                  onClick={onPortada}
+                  aria-label={t.volverPortada}
+                  title={t.volverPortada}
+                  className="pointer-events-auto absolute left-3 top-3 z-20 flex h-11 items-center gap-2 rounded-md bg-[#060a17]/90 pl-3 pr-4 text-[14px] text-[#eaf0ff] outline-none transition-colors hover:bg-[#0b1226] focus-visible:ring-1 focus-visible:ring-white/60"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <path d="M10 3 5 8l5 5" />
+                  </svg>
+                  <span>{t.portada}</span>
+                </button>
+              )}
               <SelectorIdioma className="pointer-events-auto absolute right-3 top-3 z-20" />
               <Brujula azimut={0} mPorPx={null} onFuentes={() => setFuentesAbiertas(true)} textoFuentes={t.textoFuentesGlobo} />
             </div>
           )}
         </div>
 
-        {/* Carga inicial */}
-        {cargaInicial && (
+        {/* Carga inicial. En la portada el texto ya está encima: solo una línea fina arriba */}
+        {cargaInicial && !portada && (
           <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-black">
             <p className="text-[15px] text-[#eaf0ff]">{t.cargandoMarte}</p>
             <div className="h-[3px] w-48 overflow-hidden rounded bg-white/10">
               <div className="h-full bg-[#eaf0ff] transition-[width] duration-200" style={{ width: `${Math.round(progress)}%` }} />
             </div>
             <p className={`${CIFRA} text-[12px] text-[#8d9cc2]`}>{pctEntero(Math.round(progress))}</p>
+          </div>
+        )}
+        {portada && (
+          <div
+            aria-hidden
+            className={`pointer-events-none absolute inset-0 z-40 bg-black transition-opacity duration-1000 motion-reduce:transition-none ${cargaInicial ? "opacity-100" : "opacity-0"}`}
+          >
+            <div className="h-[2px] bg-[#eaf0ff]/70 transition-[width] duration-200" style={{ width: `${cargaInicial ? Math.round(progress) : 100}%` }} />
           </div>
         )}
 

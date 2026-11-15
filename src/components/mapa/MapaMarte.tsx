@@ -82,6 +82,16 @@ export interface MapaMarteProps {
    * Con «enfoque» forma el camino de vuelta: panel → mapa y mapa → panel.
    */
   onSeleccionDestino?: (id: string | null) => void;
+  /**
+   * Mapa 3D · portada de la página: mientras está activa, el globo no se toca, lo mueve el scroll
+   * (`recorridoRef`, ver lib/portada/escenas.ts), y su interfaz no se ve. El 2D no tiene globo: lo ignora.
+   */
+  portada?: boolean;
+  recorridoRef?: { current: number };
+  /** Desde el globo, volver a la portada */
+  onPortada?: () => void;
+  /** Ya se ve el mapa: «globo» (3D, terminada la carga inicial) o «plano» (2D, sin globo) */
+  onCargado?: (tipo: "globo" | "plano") => void;
 }
 
 const ZOOM_MAX = 8;

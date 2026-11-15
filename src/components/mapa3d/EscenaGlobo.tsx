@@ -17,6 +17,13 @@
  * plomo, norte arriba) y avisa (onLlegada) sin pararse: llega con el zoom en marcha y el terreno lo
  * continúa (ver lib/mapa3d/transito.ts). Al volver, el globo empieza donde va el terreno
  * (desdeOrbita) y se aleja hasta la vista de inicio.
+ *
+ * Portada (`portada`): la cámara y el sol no los mueve la persona sino el scroll de la página
+ * (`recorridoRef`, ver lib/portada/escenas.ts), con inercia. La vista de inicio del globo es el último
+ * plano de la portada (la cara llena con Gale): al salir de la portada (se ha tocado el planeta) la
+ * cámara termina de llegar a ella (`asiento`) y el globo ya se puede girar. El descenso arranca
+ * desde donde esté la cámara, con su punto de mira, su giro y su sol, y los lleva a los de la órbita
+ * baja (el sol, al de la escena del terreno) mientras baja.
  */
 import { CameraControls, CameraControlsImpl, Html, Stars, useTexture } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
@@ -39,10 +46,11 @@ import {
 import { R_MARTE } from "@/lib/constants";
 import { cargarAlturasGale, type AlturasGale } from "@/lib/mapa3d/alturas";
 import { HORIZONTE } from "@/lib/mapa3d/atmosfera";
-import { ORBITA } from "@/lib/mapa3d/camara";
+import { ORBITA, suave } from "@/lib/mapa3d/camara";
 import { GALE, latLonAVector, ZONA } from "@/lib/mapa3d/coordenadas";
-import { ajustarCamara, ponerSRGB } from "@/lib/mapa3d/imperativo";
+import { ajustarCamara, ponerArriba, ponerSRGB } from "@/lib/mapa3d/imperativo";
 import { frenar, lanzar, pendiente, TRANSITO, type FotoTransito } from "@/lib/mapa3d/transito";
+import { copiarPose, mezclarPoses, nuevaPose, poseEn, poseGlobo, suavizar, ULTIMA } from "@/lib/portada/escenas";
 import { useIdioma } from "@/lib/i18n";
 
 const COLOR_DIA = new Color("#d6a27c");
@@ -73,6 +81,24 @@ const EXAGERACION = 3;
  * `velo`: la bruma que el terreno tiene entre la cámara y el suelo (aclara las sombras).
  */
 const LUZ_ORBITA = { tinte: 1.0, ambiente: 1.1, sol: 2.6, velo: 0.07 };
+/**
+ * Portada: inercia de la cámara tras el scroll (1/s; más alto = sigue antes al scroll), duración (s)
+ * del paso entre la portada y el globo de la demo (en los dos sentidos: la cámara se acerca y Marte
+ * gira) y giro lento del planeta mientras se lee (amplitud en radianes y periodo en s; se apaga al
+ * llegar a la demo).
+ */
+const PORTADA = { inercia: 3.2, mezcla: 2.8, deriva: 0.09, periodo: 90 };
+/** Avance del descenso (0 = lejos, 1 = órbita baja) en el que el sol ya es el de la escena del terreno */
+const SOL_LISTO = 0.75;
+const EJE_Y = new Vector3(0, 1, 0);
+
+/** Desde dónde sale un vuelo hacia la órbita baja (o adónde vuelve): posición, punto de mira, giro y sol. */
+interface Desde {
+  lejos: Vector3;
+  mira0: Vector3;
+  arriba0: Vector3;
+  sol0: Vector3;
+}
 
 /**
  * Órbita baja sobre la zona de estudio, en unidades del globo: la misma vista que ORBITA en la
@@ -90,14 +116,15 @@ function orbitaBaja(alturaZona: number) {
   return { pos, mira };
 }
 
-/** Posición inicial de la cámara y dirección del sol (Gale iluminado, terminador a la derecha). */
-function encuadre() {
+/**
+ * Dirección del sol en la órbita baja (Gale iluminado desde el oeste, terminador a la derecha): la
+ * que tiene el globo al cambiar a la escena del terreno.
+ */
+function solOrbita() {
   const g = vec(GALE.lat, GALE.lon).normalize();
   const arriba = new Vector3(0, 1, 0);
   const derecha = new Vector3().crossVectors(g.clone().negate(), arriba).normalize();
-  const camara = g.clone().multiplyScalar(3.1).add(new Vector3(0, 0.55, 0));
-  const sol = g.clone().multiplyScalar(0.55).add(derecha.clone().multiplyScalar(-0.85)).add(arriba.clone().multiplyScalar(0.18)).normalize();
-  return { camara, sol };
+  return g.clone().multiplyScalar(0.55).add(derecha.clone().multiplyScalar(-0.85)).add(arriba.clone().multiplyScalar(0.18)).normalize();
 }
 
 function Atmosfera({ sol }: { sol: Vector3 }) {
@@ -270,17 +297,43 @@ interface Props {
   /** El globo ya se puede girar (al empezar, o al terminar el regreso) */
   onReposo: () => void;
   mostrarMarca: boolean;
+  /** La cámara y el sol los lleva el scroll de la portada (no se puede girar a mano) */
+  portada: boolean;
+  /** Posición en el recorrido de la portada (0 … ULTIMA), según el scroll. La escribe la portada. */
+  recorridoRef: { current: number };
 }
 
-export default function EscenaGlobo({ descendiendo, desdeOrbita, colorHd, reducido, galeHd, foto, onLlegada, onIrAGale, onLista, onReposo, mostrarMarca }: Props) {
+export default function EscenaGlobo({
+  descendiendo,
+  desdeOrbita,
+  colorHd,
+  reducido,
+  galeHd,
+  foto,
+  onLlegada,
+  onIrAGale,
+  onLista,
+  onReposo,
+  mostrarMarca,
+  portada,
+  recorridoRef,
+}: Props) {
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
+  const aspecto = useThree((s) => s.size.width / Math.max(1, s.size.height));
   // Los textos se calculan aquí: el contenido de <Html> vive en otra raíz de React
   const { t } = useIdioma();
   const [color4k, normal, galeColor] = useTexture(["/data/3d/marte_4k.jpg", "/data/3d/marte_normal_2k.jpg", "/data/3d/gale_color.jpg"]);
   const [gale, setGale] = useState<AlturasGale | null>(null);
   // Regreso desde el terreno: se decide al montar
   const [regresando, setRegresando] = useState(desdeOrbita && !reducido);
-  const { camara: inicio, sol } = useMemo(() => encuadre(), []);
+  // Vista de inicio del globo de la demo (lib/portada/escenas.ts), con el sol que le toca.
+  // `sol` es la dirección del sol que usan la luz, el planeta y la atmósfera: cambia con la portada y
+  // en los vuelos (los materiales guardan este mismo vector).
+  const inicio = useMemo(() => poseGlobo(aspecto).pos.clone(), [aspecto]);
+  const { solCanon, solInicio, sol } = useMemo(() => {
+    const solInicio = poseGlobo(1.6).sol.clone();
+    return { solCanon: solOrbita(), solInicio, sol: solInicio.clone() };
+  }, []);
   const material = useMaterialPlaneta(colorHd ?? color4k, normal, sol);
 
   useEffect(() => {
@@ -289,6 +342,8 @@ export default function EscenaGlobo({ descendiendo, desdeOrbita, colorHd, reduci
 
   useEffect(() => {
     ajustarCamara(camera, 0.002, 400);
+    // La escena del terreno usa la misma cámara: se la deja con el norte arriba
+    return () => ponerArriba(camera, EJE_Y);
   }, [camera]);
 
   // Órbita baja sobre la zona: su suelo es el del relieve de Gale tal como se pinta en el globo
@@ -306,6 +361,7 @@ export default function EscenaGlobo({ descendiendo, desdeOrbita, colorHd, reduci
 
   // ---- Controles: giro y zoom amortiguados; más lentos cuanto más cerca (el suelo no «patina») ----
   const controles = useRef<CameraControlsImpl>(null);
+  const inicioRef = useRef(inicio);
   useEffect(() => {
     const c = controles.current;
     if (!c) return;
@@ -313,7 +369,6 @@ export default function EscenaGlobo({ descendiendo, desdeOrbita, colorHd, reduci
     c.smoothTime = 0.35;
     c.draggingSmoothTime = 0.16;
     c.minDistance = 1.25;
-    c.maxDistance = 6;
     c.dollySpeed = 0.5;
     c.mouseButtons.left = ACTION.ROTATE;
     c.mouseButtons.right = ACTION.NONE;
@@ -322,23 +377,39 @@ export default function EscenaGlobo({ descendiendo, desdeOrbita, colorHd, reduci
     c.touches.one = ACTION.TOUCH_ROTATE;
     c.touches.two = ACTION.TOUCH_DOLLY;
     c.touches.three = ACTION.NONE;
-    void c.setLookAt(inicio.x, inicio.y, inicio.z, 0, 0, 0, false);
+    // Solo al montar: con la portada, la cámara la coloca el scroll desde el primer fotograma
+    const p = inicioRef.current;
+    void c.setLookAt(p.x, p.y, p.z, 0, 0, 0, false);
+  }, []);
+  // En vertical la vista de inicio queda más lejos (el planeta tiene que caber de ancho)
+  useEffect(() => {
+    inicioRef.current = inicio;
+    if (controles.current) controles.current.maxDistance = Math.max(6, inicio.length() * 1.35);
   }, [inicio]);
 
   // ---- Vuelos: descenso hasta la órbita baja y regreso desde ella ----
-  // `lejos` es la vista desde la que se baja (o a la que se vuelve); el avance va de 0 (lejos) a 1 (órbita).
+  // `desde` es la vista desde la que se baja (o a la que se vuelve); el avance va de 0 (lejos) a 1 (órbita).
   // El descenso termina con el zoom en marcha (pendiente `m`) y el regreso arranca con él, desde `e0`.
-  const vuelo = useRef<{ t0: number; dur: number; lejos: Vector3; sentido: 1 | -1; m: number; e0: number; fundido: number; hecho: boolean } | null>(null);
+  const vuelo = useRef<{ t0: number; dur: number; desde: Desde; sentido: 1 | -1; m: number; e0: number; fundido: number; hecho: boolean } | null>(null);
   const altoOrbita = orbita.pos.length() - 1;
   /** Unidades logarítmicas de altura entre `lejos` y la órbita baja */
   const largo = (lejos: Vector3) => Math.max(0.2, Math.log((lejos.length() - 1) / altoOrbita));
+  /** La vista de inicio del globo como salida (o llegada) de un vuelo */
+  const desdeInicio = (): Desde => ({ lejos: inicio.clone(), mira0: new Vector3(), arriba0: EJE_Y.clone(), sol0: solInicio.clone() });
   useEffect(() => {
     if (!descendiendo) return;
     if (reducido) return onLlegada(0);
-    controles.current?.stop();
-    const lejos = camera.position.clone();
-    const dur = DUR.base + DUR.porLog * largo(lejos);
-    vuelo.current = { t0: performance.now(), dur, lejos, sentido: 1, m: pendiente(TRANSITO.ritmo, dur, largo(lejos)), e0: 1, fundido: 0, hecho: false };
+    const c = controles.current;
+    c?.stop();
+    // Desde donde esté la cámara: la vista de inicio, la que haya dejado la persona o la portada
+    const desde: Desde = {
+      lejos: camera.position.clone(),
+      mira0: c ? c.getTarget(new Vector3()) : new Vector3(),
+      arriba0: camera.up.clone(),
+      sol0: sol.clone(),
+    };
+    const dur = DUR.base + DUR.porLog * largo(desde.lejos);
+    vuelo.current = { t0: performance.now(), dur, desde, sentido: 1, m: pendiente(TRANSITO.ritmo, dur, largo(desde.lejos)), e0: 1, fundido: 0, hecho: false };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [descendiendo, reducido, camera, onLlegada]);
 
@@ -368,13 +439,24 @@ export default function EscenaGlobo({ descendiendo, desdeOrbita, colorHd, reduci
     if (solRef.current) solRef.current.intensity = 3.4 + (LUZ_ORBITA.sol - 3.4) * f;
   };
 
+  /** Mueve el sol (la luz, el planeta y la atmósfera comparten el vector `sol`). */
+  const ponerSol = (v: Vector3) => {
+    sol.copy(v);
+    solRef.current?.position.copy(sol).multiplyScalar(10);
+  };
+
   const mira = useMemo(() => new Vector3(), []);
   const dir = useMemo(() => new Vector3(), []);
   const tmp = useMemo(() => new Vector3(), []);
-  const colocar = (lejos: Vector3, e: number) => {
+  const tmpSol = useMemo(() => new Vector3(), []);
+  const arriba = useMemo(() => new Vector3(), []);
+  const colocar = (desde: Desde, e: number) => {
+    const { lejos } = desde;
     // Altura: en escala logarítmica, para que el acercamiento se perciba uniforme
     const alto = Math.exp(Math.log(lejos.length() - 1) * (1 - e) + Math.log(altoOrbita) * e);
     acercar(alto);
+    // El sol pasa al de la órbita baja antes de llegar (el de la escena del terreno)
+    ponerSol(tmpSol.copy(desde.sol0).lerp(solCanon, suavizar(e / SOL_LISTO)).normalize());
     const c = controles.current;
     if (!c) return;
     // Rumbo y punto de mira: se llega pronto sobre Gale y ahí se quedan quietos; cerca del suelo ya
@@ -382,16 +464,117 @@ export default function EscenaGlobo({ descendiendo, desdeOrbita, colorHd, reduci
     const eRumbo = 1 - Math.pow(1 - e, 3);
     dir.copy(lejos).normalize().lerp(tmp.copy(orbita.pos).normalize(), eRumbo).normalize();
     dir.multiplyScalar(1 + alto);
-    mira.copy(orbita.mira).multiplyScalar(eRumbo);
+    mira.copy(desde.mira0).lerp(orbita.mira, eRumbo);
+    // Si la portada dejó la cámara girada, se endereza a la vez (en la órbita, norte arriba)
+    if (desde.arriba0.distanceToSquared(EJE_Y) > 1e-12) {
+      ponerArriba(camera, eRumbo >= 1 ? EJE_Y : arriba.copy(desde.arriba0).lerp(EJE_Y, eRumbo).normalize());
+      c.updateCameraUp();
+    }
     c.minDistance = 0;
     void c.setLookAt(dir.x, dir.y, dir.z, mira.x, mira.y, mira.z, false);
+  };
+
+  // ---- Portada: la cámara sigue al scroll con inercia ----
+  // `s`: posición del recorrido ya suavizada. Al volver a la portada desde el globo se mezcla la
+  // vista que había con la del scroll (`mezcla` 0 → 1) para no dar un salto.
+  const paisaje = useRef({ listo: false, mezclar: false, s: 0, mezcla: 1, t: 0, capturada: nuevaPose(), objetivo: nuevaPose(), actual: nuevaPose() });
+  // Al salir de la portada (se ha tocado el planeta), la cámara pasa del último plano de la portada a
+  // la vista de inicio del globo: se acerca y Marte gira un poco. Después el globo se gira a mano.
+  const asiento = useRef({ k: 1, desde: nuevaPose(), hasta: nuevaPose(), actual: nuevaPose() });
+  const [asentando, setAsentando] = useState(false);
+  const portadaPrevia = useRef(portada);
+  useEffect(() => {
+    // Vuelve a la portada desde el globo: se arranca desde la vista actual
+    if (portada && !portadaPrevia.current) {
+      paisaje.current.listo = false;
+      paisaje.current.mezclar = true;
+    }
+    // Sale de la portada: se asienta en la vista de inicio
+    const c = controles.current;
+    if (!portada && portadaPrevia.current && c) {
+      const a = asiento.current;
+      a.k = 0;
+      a.desde.pos.copy(camera.position);
+      c.getTarget(a.desde.mira);
+      a.desde.arriba.copy(camera.up);
+      a.desde.sol.copy(sol);
+      setAsentando(true);
+    }
+    portadaPrevia.current = portada;
+  }, [portada, camera, sol]);
+  const asentar = (dt: number) => {
+    const c = controles.current;
+    const a = asiento.current;
+    if (!c) return;
+    a.k = Math.min(1, a.k + Math.min(dt, 0.1) / PORTADA.mezcla);
+    poseGlobo(aspecto, a.hasta);
+    const p = mezclarPoses(a.desde, a.hasta, suave(a.k), a.actual);
+    if (a.k >= 1) {
+      // Ya en la vista de inicio, tal cual (norte arriba, mirando al centro)
+      ponerArriba(camera, EJE_Y);
+      c.updateCameraUp();
+      c.minDistance = 1.25;
+      void c.setLookAt(inicio.x, inicio.y, inicio.z, 0, 0, 0, false);
+      c.update(0);
+      ponerSol(solInicio);
+      setAsentando(false);
+      return;
+    }
+    ponerArriba(camera, p.arriba);
+    c.updateCameraUp();
+    c.minDistance = 0;
+    void c.setLookAt(p.pos.x, p.pos.y, p.pos.z, p.mira.x, p.mira.y, p.mira.z, false);
+    c.update(0);
+    ponerSol(p.sol);
+  };
+  const conducirPortada = (dt: number) => {
+    const c = controles.current;
+    if (!c) return;
+    const st = paisaje.current;
+    if (!st.listo) {
+      st.listo = true;
+      st.s = recorridoRef.current;
+      st.mezcla = st.mezclar ? 0 : 1;
+      if (st.mezclar) {
+        st.mezclar = false;
+        st.capturada.pos.copy(camera.position);
+        c.getTarget(st.capturada.mira);
+        st.capturada.arriba.copy(camera.up);
+        st.capturada.sol.copy(sol);
+      }
+    }
+    const paso = Math.min(dt, 0.1);
+    st.s += (recorridoRef.current - st.s) * (1 - Math.exp(-paso * PORTADA.inercia));
+    poseEn(st.s, aspecto, st.objetivo);
+    // Mientras se lee, el planeta gira despacio sobre su eje (cámara y sol giran juntos alrededor de él)
+    if (!reducido) {
+      st.t += paso;
+      const angulo = PORTADA.deriva * Math.sin((2 * Math.PI * st.t) / PORTADA.periodo) * (1 - suavizar((st.s - (ULTIMA - 1)) / 0.8));
+      if (angulo !== 0) {
+        st.objetivo.pos.applyAxisAngle(EJE_Y, angulo);
+        st.objetivo.mira.applyAxisAngle(EJE_Y, angulo);
+        st.objetivo.arriba.applyAxisAngle(EJE_Y, angulo);
+        st.objetivo.sol.applyAxisAngle(EJE_Y, angulo);
+      }
+    }
+    if (st.mezcla < 1) {
+      st.mezcla = Math.min(1, st.mezcla + paso / PORTADA.mezcla);
+      mezclarPoses(st.capturada, st.objetivo, suave(st.mezcla), st.actual);
+    } else copiarPose(st.objetivo, st.actual);
+    const p = st.actual;
+    ponerArriba(camera, p.arriba);
+    c.updateCameraUp();
+    c.minDistance = 0;
+    void c.setLookAt(p.pos.x, p.pos.y, p.pos.z, p.mira.x, p.mira.y, p.mira.z, false);
+    c.update(0);
+    ponerSol(p.sol);
   };
 
   // Centro de la zona de estudio, pegado al suelo (el relieve de Gale apenas sube ahí: es el fondo del cráter)
   const marca = useMemo(() => vec(ZONA.lat, ZONA.lon, 1.0008), []);
   const marcaRef = useRef<HTMLDivElement>(null);
   const fotogramas = useRef(0);
-  useFrame((estado) => {
+  useFrame((estado, delta) => {
     // La marca de Gale solo se ve en la cara del globo que mira a la cámara
     const b = marcaRef.current;
     if (b) {
@@ -408,7 +591,8 @@ export default function EscenaGlobo({ descendiendo, desdeOrbita, colorHd, reduci
     // Primeros fotogramas: la escena ya se ve. Si se viene del terreno, empieza el regreso: desde
     // donde va la foto del terreno (que ha seguido alejándose mientras se montaba el globo) y a su ritmo.
     if (fotogramas.current < 3) {
-      if (regresando) colocar(inicio, 1);
+      if (regresando) colocar(desdeInicio(), 1);
+      else if (portada) conducirPortada(delta);
       if (++fotogramas.current === 3) {
         const { z, v } = foto.estado();
         onLista();
@@ -419,7 +603,7 @@ export default function EscenaGlobo({ descendiendo, desdeOrbita, colorHd, reduci
           vuelo.current = {
             t0: ahora,
             dur: DUR.regreso,
-            lejos: inicio.clone(),
+            desde: desdeInicio(),
             sentido: -1,
             m: pendiente(-v, DUR.regreso, e0 * total),
             e0,
@@ -432,22 +616,25 @@ export default function EscenaGlobo({ descendiendo, desdeOrbita, colorHd, reduci
     }
 
     const v = vuelo.current;
+    // Sin vuelo en marcha, en la portada la cámara la lleva el scroll
+    if ((!v || v.hecho) && portada && !descendiendo) return conducirPortada(delta);
+    if ((!v || v.hecho) && asiento.current.k < 1 && !descendiendo) return asentar(delta);
     if (!v || v.hecho) return;
     const ahora = performance.now();
     const k = Math.min(1, (ahora - v.t0) / v.dur);
     const e = v.sentido === 1 ? lanzar(k, v.m) : v.e0 * (1 - frenar(k, v.m));
-    colocar(v.lejos, e);
+    colocar(v.desde, e);
     // Durante el fundido, la foto del terreno se aleja a la par que el globo
-    if (ahora < v.fundido) foto.seguir(-(1 - e) * largo(v.lejos));
+    if (ahora < v.fundido) foto.seguir(-(1 - e) * largo(v.desde.lejos));
     if (k < 1) return;
     v.hecho = true;
     if (v.sentido === 1) {
       // La cámara, ya en la órbita baja (los controles la colocan al actualizarse): la foto sale de ahí
       c?.update(0);
-      return onLlegada((v.m * largo(v.lejos) * 1000) / v.dur);
+      return onLlegada((v.m * largo(v.desde.lejos) * 1000) / v.dur);
     }
     // Regreso terminado: el globo vuelve a girarse a mano
-    colocar(inicio, 0);
+    colocar(desdeInicio(), 0);
     if (c) {
       c.minDistance = 1.25;
       void c.setLookAt(inicio.x, inicio.y, inicio.z, 0, 0, 0, false);
@@ -473,9 +660,10 @@ export default function EscenaGlobo({ descendiendo, desdeOrbita, colorHd, reduci
         Rótulo con línea guía: el punto está justo sobre la zona de estudio; de él sube una línea fina
         que dobla hacia el nombre. Tocar el nombre (o el punto) baja a la zona de estudio.
       */}
-      {mostrarMarca && !descendiendo && !regresando && (
+      {/* El rótulo aparece cuando la cámara ya ha llegado (no durante el paso desde la portada) */}
+      {mostrarMarca && !descendiendo && !regresando && !asentando && (
         <Html position={marca.toArray()} zIndexRange={[20, 10]}>
-          <div ref={marcaRef} className="relative h-0 w-0 transition-opacity duration-300">
+          <div ref={marcaRef} className="relative h-0 w-0 transition-opacity duration-300 motion-safe:animate-[aparecer_0.6s_ease-out]">
             <svg
               width={LINEA.ancho + 1}
               height={LINEA.alto + 1}
@@ -521,7 +709,7 @@ export default function EscenaGlobo({ descendiendo, desdeOrbita, colorHd, reduci
         </Html>
       )}
 
-      <CameraControls ref={controles} makeDefault enabled={!descendiendo && !regresando} />
+      <CameraControls ref={controles} makeDefault enabled={!descendiendo && !regresando && !portada && !asentando} />
     </>
   );
 }
