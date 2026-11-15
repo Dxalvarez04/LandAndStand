@@ -26,21 +26,21 @@ The first astronauts to set foot on Mars will arrive after some six months witho
 
 ## What you can do
 
-- **Fly down from the Mars globe to Gale.** The whole planet with Viking color and MOLA relief; tap Gale crater and the camera descends to the study area, in 3D on the real terrain.
-- **See what's reachable.** The round-trip probability is painted on the ground (viridis scale), with the 50% and 90% contours. The reachable area grows as the sols go by and the crew readapts.
-- **Choose who walks.** One person, a pair or a group of any size, from eight astronaut profiles. A group moves at the pace of its most limited member.
-- **Plan the mission destinations.** The plan starts with six proposed destinations (M1–M6); the crew can remove them or add their own by tapping the map. Tapping a destination in the panel flies the map to it.
+- **Fly down from the Mars globe to Gale.** The whole planet with Viking color and MOLA relief; tap Gale crater and the camera descends without a cut: first to a low orbit about 100 km above the study area, where the crater and Mount Sharp are seen sharp, and then in an arc down to the study area, in 3D on the real terrain. "Mars globe" does the same in reverse. The panel comes in when the camera lands.
+- **See what's reachable.** The round-trip probability tints the ground (viridis scale), and the 50% and 90% contours are drawn as crisp lines at any zoom. The reachable area grows as the sols go by and the crew readapts.
+- **Choose who walks.** One person, a pair or a group of any size, from eight astronaut profiles that are always in view in the panel, each with a bar showing how far they can go and return on flat ground that sol. A group moves at the pace of its most limited member, and the panel says who that is.
+- **Plan the mission destinations.** The plan starts with six proposed destinations (M1–M6); the crew can remove them or add their own by tapping the map. Map and panel are linked both ways: tapping a destination in the panel flies the map to it, and tapping it on the map opens its row in the panel.
 - **Inspect any point.** Tapping the ground opens an info card with the probability, the distance, the lowest-energy route (out and back), the climb and the maximum slope. The card places itself so it doesn't cover the route, and lets you add that point to the mission.
 - **Find your way with Curiosity.** The six sites the rover visited (T1–T6) are landmarks, with NASA's official image of what it saw there: 360° views, panoramas and photos, in a full-screen viewer.
-- **Move freely.** 3D or top-down view, zoom down to 140 m above the ground, tilt almost to the horizon. The camera never goes through the terrain.
+- **Move freely.** 3D or top-down view with map-like controls: the point you grab stays under the cursor, the zoom goes toward the cursor, from 180 m above the ground out to 70 km, and you can tilt almost to the horizon. Around the study area the terrain continues with real data, so Mount Sharp, the crater floor and the rim on the horizon are all there. The "?" button explains the gestures. The camera never goes through the terrain.
 - **Use it in English or Spanish, on the ship's screen or a phone.** A language switch sits with the map controls. The panel floats over the map and hides with a tab; in portrait it moves to the bottom half. Without WebGL, a 2D map keeps the essentials.
 
 | | |
 |:---:|:---:|
 | ![Mars globe with Gale crater marked](docs/img/en-globo.jpg) | ![Study area in 3D with the probability, the destinations and the panel](docs/img/en-terreno.jpg) |
-| Mars globe (Viking + MOLA) | Study area in 3D, sol 12 |
+| Mars globe (Viking + MOLA) | Study area in 3D, sol 1 |
 | ![Top-down view with north up and scale](docs/img/en-cenital.jpg) | <img src="docs/img/en-movil.jpg" alt="Phone layout, with the panel in the bottom half" width="270"> |
-| Top-down view, panel hidden | Phone |
+| Top-down view, sol 12 | Phone |
 
 
 ### How it would be used on the mission
@@ -75,7 +75,7 @@ The computation follows the [algorithm specification](docs/algorithm-spec.md), w
 
 **Where it runs.** In the browser. The 300 draws are split across several Web Workers (up to 6, depending on the cores) and the page adds up their counts: the result is identical to a single thread. A new change makes the running computation obsolete, so dragging a slider never queues work up. On a recent laptop, a group of three astronauts is computed in under a second.
 
-**3D map performance.** The canvas only redraws when something changes (no GPU use at rest). The shadow map is computed once. Pointer picking intersects rays with the height grid instead of walking the terrain's 560,000 triangles. The panel floats over the map without resizing the canvas.
+**3D map performance.** The terrain is three nested meshes, each from real data and blended into the next with no step (7.5 × 9.5 km around the study area at 16 m, the whole MSL mosaic of 33 × 57 km at 64 m, and the Gale region, 237 km across), about 1.2 million triangles on desktop, built while the globe is on screen. The canvas only redraws when something changes (no GPU use at rest). The shadow map is computed once. Pointer picking and the camera gestures intersect rays with the height grids instead of walking the triangles. The panel floats over the map without resizing the canvas.
 
 <details>
 <summary><b>Architecture: the contract between computation, map and panel</b></summary>
@@ -140,14 +140,14 @@ npm run dev      # http://localhost:3000  (add ?lang=en or ?lang=es to force a l
 |---|---|
 | `npm run dev` | Development server |
 | `npm run build` then `npm start` | Production build |
-| `npm test` | Tests (vitest): model, equivalence of the optimizations, 3D geometry, data and translations |
+| `npm test` | Tests (vitest): model, equivalence of the optimizations, 3D geometry and camera gestures, data and translations |
 | `npm run lint` | ESLint |
 
 The processed data is already in [`public/data/`](public/data/README.md), so nothing needs downloading to run the tool. To regenerate it from the official sources (Python with `rasterio`, `numpy` and `Pillow`):
 
 ```bash
 python3 scripts/preparar_datos.py      # computation DEM, HiRISE background and relief
-python3 scripts/preparar_datos_3d.py   # globe, Gale region and 3D terrain
+python3 scripts/preparar_datos_3d.py   # globe, Gale region, 3D terrain and its surroundings
 ```
 
 ## Project structure
@@ -162,13 +162,13 @@ src/
 │   ├── model/                Computation: layers 2 to 6 (with their tests)
 │   ├── data/                 Habitat, destinations, landmarks, profiles, photos and sources
 │   ├── mapa/                 Map geometry, contours and rasterizing
-│   └── mapa3d/               3D coordinates, camera, mesh and ray picking
+│   └── mapa3d/               3D coordinates, three-level relief, camera and gestures, haze, ray picking and labels
 ├── workers/modelo.worker.ts  Adds up its share of draws and computes routes
 ├── hooks/                    useModelo (splits the computation), useRuta, useTransicion…
 └── components/
-    ├── mapa3d/               3D map: globe, descent, terrain, labels, camera
+    ├── mapa3d/               3D map: globe, descent, terrain, lines, labels, controls
     ├── mapa/                 2D fallback map, info card, legend, photo viewer, sources
-    └── panel/                Sol, crew, intensity and mission destinations
+    └── panel/                Header, sol, crew, pace and mission destinations
 public/
 ├── data/                     Processed elevation, images and heights (see its README)
 └── fotos/                    Curiosity images of each landmark
@@ -199,15 +199,17 @@ The Spanish originals are in [`docs/es/`](docs/es/), together with the specifica
 
 ## Data and credits
 
-All data is public and shares the same projection (Mars equirectangular, central meridian 0°, R = 3,396,190 m). The full list, with sizes and checked details, is in [`docs/data-sources.md`](docs/data-sources.md); the tool shows it under "Sources".
+All data is public. The Gale elevation model, the HiRISE and MSL mosaics and the Curiosity positions share the same projection (Mars equirectangular, central meridian 0°, R = 3,396,190 m). The full list, with sizes and checked details, is in [`docs/data-sources.md`](docs/data-sources.md); the tool shows it under "Sources".
 
 | Data | Source | Use |
 |---|---|---|
-| Gale terrain, 1 m | [USGS Astrogeology · MSL Gale Merged DEM 1m v3](https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m) (Calef and Parker, 2016) | Computation and 3D relief |
+| Gale terrain, 1 m | [USGS Astrogeology · MSL Gale Merged DEM 1m v3](https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m) (Calef and Parker, 2016) | Computation and 3D relief (study area and its 33 × 57 km surroundings) |
 | Color image, 25 cm | [USGS Astrogeology · MSL Gale Merged Orthophoto Mosaic 25cm](https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_orthophoto_mosaic_25cm) · HiRISE, NASA/JPL-Caltech/University of Arizona | Map background |
+| Surroundings image, 25 cm | [USGS Astrogeology · MSL Gale Merged Orthophoto Mosaic 25cm v3](https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_orthophoto_mosaic_25cm) (Calef and Parker, 2016), grayscale, colorized with the HiRISE mosaic's palette | Surroundings of the study area in 3D (visual only; approximate color, not measured) |
+| Gale region image, 6 m | [Mars CTX Controlled Equatorial Mosaics](https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/Mars_MRO_CTX_Equi_Mosaics_Robbins/index.html) (Robbins et al., USGS) · CTX, NASA/JPL-Caltech/MSSS, colorized the same way | Gale region on the globe and on the 3D horizon (visual only; approximate color, not measured) |
 | Curiosity positions | [NASA/JPL-Caltech · MSL waypoints (MMGIS)](https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json) | Landmarks |
 | Curiosity images | [NASA Photojournal](https://photojournal.jpl.nasa.gov/) · NASA/JPL-Caltech/MSSS, with their PIA numbers | Photo viewer |
-| Mars globe | Viking MDIM 2.1 and MOLA (USGS, NASA/GSFC); Gale region with HRSC-MOLA 200 m | Globe and descent (visual only) |
+| Mars globe | Viking MDIM 2.1 and MOLA (USGS, NASA/GSFC); Gale region relief with HRSC-MOLA 200 m | Globe, descent and 3D horizon (visual only) |
 
 ## Team
 

@@ -26,21 +26,21 @@ Los primeros astronautas que pisen Marte llegarán tras unos seis meses sin grav
 
 ## Qué se puede hacer
 
-- **Bajar del globo de Marte a Gale.** Marte entero con el color Viking y el relieve MOLA; se toca el cráter Gale y la cámara desciende hasta la zona de estudio, en 3D sobre el relieve real.
-- **Ver qué es alcanzable.** La probabilidad de ir y volver se pinta sobre el terreno (escala viridis), con los contornos del 50 % y del 90 %. La zona crece al avanzar los soles, a medida que la tripulación se readapta.
-- **Elegir quién camina.** Una persona, una pareja o un grupo de cualquier tamaño, a partir de ocho perfiles de astronauta. El grupo va al ritmo del miembro más limitado.
-- **Planificar los destinos de la misión.** El plan empieza con seis destinos propuestos (M1–M6) y la tripulación puede quitarlos o añadir los suyos tocando el mapa. Al pulsar un destino en el panel, el mapa vuela hasta él.
+- **Bajar del globo de Marte a Gale.** Marte entero con el color Viking y el relieve MOLA; se toca el cráter Gale y la cámara desciende sin cortes: primero hasta una órbita baja a unos 100 km sobre la zona de estudio, desde donde se ven nítidos el cráter y el monte Sharp, y después en arco hasta la zona de estudio, en 3D sobre el relieve real. «Globo de Marte» hace lo mismo al revés. El panel entra cuando la cámara se posa.
+- **Ver qué es alcanzable.** La probabilidad de ir y volver tiñe el terreno (escala viridis), y los contornos del 50 % y del 90 % son líneas nítidas a cualquier zoom. La zona crece al avanzar los soles, a medida que la tripulación se readapta.
+- **Elegir quién camina.** Una persona, una pareja o un grupo de cualquier tamaño, a partir de ocho perfiles de astronauta que están siempre a la vista en el panel, cada uno con una barra de hasta dónde puede ir y volver en llano ese sol. El grupo va al ritmo del miembro más limitado, y el panel dice quién es.
+- **Planificar los destinos de la misión.** El plan empieza con seis destinos propuestos (M1–M6) y la tripulación puede quitarlos o añadir los suyos tocando el mapa. Mapa y panel van enlazados en los dos sentidos: al pulsar un destino en el panel, el mapa vuela hasta él, y al tocarlo en el mapa se abre su fila en el panel.
 - **Consultar un punto.** Al tocar el terreno se abre una ficha con la probabilidad, la distancia, la ruta de menor energía (ida y vuelta), la subida y la pendiente máxima. La ficha se coloca sin tapar la ruta y permite añadir ese punto a la misión.
 - **Orientarse con Curiosity.** Los seis sitios que visitó el rover (T1–T6) son puntos de referencia, con la foto oficial de lo que vio allí: 360°, panorámicas y fotos, en un visor a pantalla completa.
-- **Moverse con libertad.** Vista 3D o cenital, zoom hasta 140 m del suelo, inclinación casi hasta el horizonte. La cámara no atraviesa el relieve.
+- **Moverse con libertad.** Vista 3D o cenital con controles como los de un mapa: el punto que se agarra sigue bajo el cursor, el zoom va hacia el cursor, desde 180 m del suelo hasta 70 km, y se puede inclinar casi hasta el horizonte. Alrededor de la zona de estudio el terreno sigue con datos reales: se ven el monte Sharp, el fondo del cráter y el borde en el horizonte. El botón «?» explica los gestos. La cámara no atraviesa el relieve.
 - **Usarlo en español o en inglés, en la nave o en el móvil.** El selector de idioma está con los controles del mapa. El panel flota sobre el mapa y se esconde con una pestaña; en vertical pasa a la mitad inferior. Si el dispositivo no tiene WebGL, se usa un mapa 2D con lo esencial.
 
 | | |
 |:---:|:---:|
 | ![Globo de Marte con el cráter Gale señalado](docs/img/globo.jpg) | ![Zona de estudio en 3D con la probabilidad, los destinos y el panel](docs/img/terreno.jpg) |
-| Globo de Marte (Viking + MOLA) | Zona de estudio en 3D, sol 12 |
+| Globo de Marte (Viking + MOLA) | Zona de estudio en 3D, sol 1 |
 | ![Vista cenital con el norte arriba y escala](docs/img/cenital.jpg) | <img src="docs/img/movil.jpg" alt="Versión para móvil, con el panel en la mitad inferior" width="270"> |
-| Vista cenital, con el panel escondido | Móvil |
+| Vista cenital, sol 12 | Móvil |
 
 ### Cómo se usaría en la misión
 
@@ -74,7 +74,7 @@ El cálculo sigue la [especificación de algoritmos](docs/es/especificacion_algo
 
 **Dónde se calcula.** En el navegador. Los 300 sorteos se reparten entre varios Web Workers (hasta 6, según los núcleos) y la página junta los conteos: el resultado es idéntico al de un solo hilo. Un cambio nuevo deja obsoleto el cálculo en curso, así que arrastrar un deslizador no acumula cálculos. En un portátil reciente, un grupo de tres astronautas se calcula en menos de un segundo.
 
-**Rendimiento del mapa 3D.** El lienzo solo se dibuja cuando algo cambia (en reposo no gasta GPU). El mapa de sombras se calcula una vez. El puntero corta rayos contra la rejilla de alturas en lugar de recorrer los 560 000 triángulos del terreno. El panel flota sobre el mapa sin redimensionar el lienzo.
+**Rendimiento del mapa 3D.** El terreno son tres mallas encajadas, cada una con datos reales y fundida con la siguiente sin escalón (7,5 × 9,5 km alrededor de la zona de estudio a 16 m, todo el mosaico MSL de 33 × 57 km a 64 m, y la región de Gale, de 237 km), unos 1,2 millones de triángulos en escritorio, que se preparan mientras se ve el globo. El lienzo solo se dibuja cuando algo cambia (en reposo no gasta GPU). El mapa de sombras se calcula una vez. El puntero y los gestos de la cámara cortan rayos contra las rejillas de alturas en lugar de recorrer los triángulos. El panel flota sobre el mapa sin redimensionar el lienzo.
 
 <details>
 <summary><b>Arquitectura: el contrato entre el cálculo, el mapa y el panel</b></summary>
@@ -139,14 +139,14 @@ npm run dev      # http://localhost:3000  (con ?lang=es o ?lang=en se fuerza el 
 |---|---|
 | `npm run dev` | Servidor de desarrollo |
 | `npm run build` y `npm start` | Versión de producción |
-| `npm test` | Tests (vitest): modelo, equivalencia de las optimizaciones, geometría del mapa 3D, datos y traducciones |
+| `npm test` | Tests (vitest): modelo, equivalencia de las optimizaciones, geometría y gestos de la cámara del mapa 3D, datos y traducciones |
 | `npm run lint` | ESLint |
 
 Los datos ya procesados están en [`public/data/`](public/data/README.es.md), así que no hace falta descargar nada para usar la herramienta. Para regenerarlos desde las fuentes oficiales (Python con `rasterio`, `numpy` y `Pillow`):
 
 ```bash
 python3 scripts/preparar_datos.py      # DEM de cálculo, fondo HiRISE y relieve
-python3 scripts/preparar_datos_3d.py   # globo, región de Gale y terreno 3D
+python3 scripts/preparar_datos_3d.py   # globo, región de Gale, terreno 3D y su entorno
 ```
 
 ## Estructura
@@ -161,13 +161,13 @@ src/
 │   ├── model/                Cálculo: capas 2 a 6 (con sus tests)
 │   ├── data/                 Hábitat, destinos, referencias, perfiles, fotos y fuentes
 │   ├── mapa/                 Geometría, contornos y rasterizado del mapa
-│   └── mapa3d/               Coordenadas, cámara, malla y corte de rayos del 3D
+│   └── mapa3d/               Coordenadas, relieve en tres niveles, cámara y gestos, bruma, corte de rayos y rótulos del 3D
 ├── workers/modelo.worker.ts  Suma su tramo de sorteos y calcula rutas
 ├── hooks/                    useModelo (reparte el cálculo), useRuta, useTransicion…
 └── components/
-    ├── mapa3d/               Mapa 3D: globo, descenso, terreno, etiquetas, cámara
+    ├── mapa3d/               Mapa 3D: globo, descenso, terreno, líneas, etiquetas, controles
     ├── mapa/                 Mapa 2D de respaldo, ficha, clave, visor de fotos, fuentes
-    └── panel/                Sol, tripulación, intensidad y destinos de la misión
+    └── panel/                Cabecera, sol, tripulación, ritmo y destinos de la misión
 public/
 ├── data/                     DEM, imágenes y alturas ya procesados (ver su README)
 └── fotos/                    Fotos de Curiosity de cada punto de referencia
@@ -196,15 +196,17 @@ La versión en inglés de cada documento está en [`docs/`](docs/).
 
 ## Datos y créditos
 
-Todos los datos son públicos y están en la misma proyección (equirectangular de Marte, meridiano central 0°, R = 3 396 190 m). La lista completa, con tamaños y detalles comprobados, está en [`docs/es/fuentes.md`](docs/es/fuentes.md); la herramienta la muestra en «Fuentes».
+Todos los datos son públicos. El DEM de Gale, los mosaicos HiRISE y MSL y las posiciones de Curiosity están en la misma proyección (equirectangular de Marte, meridiano central 0°, R = 3 396 190 m). La lista completa, con tamaños y detalles comprobados, está en [`docs/es/fuentes.md`](docs/es/fuentes.md); la herramienta la muestra en «Fuentes».
 
 | Dato | Fuente | Uso |
 |---|---|---|
-| Terreno de Gale, 1 m | [USGS Astrogeology · MSL Gale Merged DEM 1m v3](https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m) (Calef y Parker, 2016) | Cálculo y relieve 3D |
+| Terreno de Gale, 1 m | [USGS Astrogeology · MSL Gale Merged DEM 1m v3](https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_dem_1m) (Calef y Parker, 2016) | Cálculo y relieve 3D (zona de estudio y su entorno de 33 × 57 km) |
 | Imagen en color, 25 cm | [USGS Astrogeology · MSL Gale Merged Orthophoto Mosaic 25cm](https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_orthophoto_mosaic_25cm) · HiRISE, NASA/JPL-Caltech/University of Arizona | Fondo del mapa |
+| Imagen del entorno, 25 cm | [USGS Astrogeology · MSL Gale Merged Orthophoto Mosaic 25cm v3](https://astrogeology.usgs.gov/search/map/mars_msl_gale_merged_orthophoto_mosaic_25cm) (Calef y Parker, 2016), en gris, coloreada con la paleta del mosaico HiRISE | Entorno de la zona de estudio en el 3D (solo visual; color aproximado, no medido) |
+| Imagen de la región de Gale, 6 m | [Mars CTX Controlled Equatorial Mosaics](https://asc-pds-services.s3.us-west-2.amazonaws.com/mosaic/Mars/Mars_MRO_CTX_Equi_Mosaics_Robbins/index.html) (Robbins et al., USGS) · CTX, NASA/JPL-Caltech/MSSS, coloreada igual | Región de Gale en el globo y en el horizonte del 3D (solo visual; color aproximado, no medido) |
 | Posiciones de Curiosity | [NASA/JPL-Caltech · MSL waypoints (MMGIS)](https://mars.nasa.gov/mmgis-maps/MSL/Layers/json/MSL_waypoints.json) | Puntos de referencia |
 | Fotos de Curiosity | [NASA Photojournal](https://photojournal.jpl.nasa.gov/) · NASA/JPL-Caltech/MSSS, con su número PIA | Visor de fotos |
-| Globo de Marte | Viking MDIM 2.1 y MOLA (USGS, NASA/GSFC); región de Gale con HRSC-MOLA 200 m | Globo y descenso (solo visual) |
+| Globo de Marte | Viking MDIM 2.1 y MOLA (USGS, NASA/GSFC); relieve de la región de Gale con HRSC-MOLA 200 m | Globo, descenso y horizonte del 3D (solo visual) |
 
 ## Equipo
 
